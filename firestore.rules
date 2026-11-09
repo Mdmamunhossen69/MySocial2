@@ -123,6 +123,7 @@ service cloud.firestore {
           && request.resource.data.imagePath is string
           && request.resource.data.imagePath.matches('post-images/' + request.auth.uid + '/.*')
           && request.resource.data.imageUrl is string
+          && request.resource.data.imageUrl.size() <= 2000
           && request.resource.data.imageUrl.matches('https://firebasestorage.googleapis.com/.*'))
           || (!('imagePath' in request.resource.data) && !('imageUrl' in request.resource.data)));
       allow update: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid
