@@ -87,7 +87,7 @@ async function openChat(uid,name){
     if(!existingChat.exists()) await setDoc(chatRef,{participants,createdAt:serverTimestamp(),updatedAt:serverTimestamp()});
     state.activeChatId=chatId;
     $("activeChatTitle").textContent=name;
-    $("chatComposer").classList.remove("hidden");
+    $("chatForm").classList.remove("hidden");
     if(state.messageUnsubscribe)state.messageUnsubscribe();
     const {collection,query,orderBy,limit,onSnapshot}=state.firebase;
     const q=query(collection(state.db,"chats",chatId,"messages"),orderBy("createdAt","asc"),limit(100));
