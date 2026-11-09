@@ -6,8 +6,9 @@ A mobile-first Bengali/English community app built with HTML, CSS, JavaScript mo
 - Responsive social-network layout, Bengali/English toggle, dark theme and installable PWA shell
 - Firebase email/password registration and login
 - Public text and image feed with real-time updates (image-only posts supported, 5 MB limit)
-- Text stories that expire after 24 hours
-- Public community groups with create/join membership
+- In-app notification inbox and FCM push-token registration; friend-request push sending is handled by Cloud Functions once deployed
+- Text-only stories that expire after 24 hours
+- Public community groups with create/join membership (group discussions are not enabled yet)
 - Create and delete your own posts
 - Like/unlike posts and add/read recent comments
 - Report posts; trusted admins can review reports, resolve them, or remove reported posts
@@ -16,7 +17,7 @@ A mobile-first Bengali/English community app built with HTML, CSS, JavaScript mo
 - AI helper directory; all automated profiles are clearly labelled as AI
 
 ## Not implemented yet
-- Stories, groups, image/video uploads, push notifications, full profile editing and a full notification center
+- Video uploads, group discussions/posts, full profile editing, and autonomous AI-generated bot posts
 - Automated bot conversations or autonomous AI posting
 - Production-grade backend checks that verify a chat participant is an accepted friend. Do not treat client-side navigation as a security boundary.
 
