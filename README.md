@@ -17,19 +17,20 @@ A mobile-first Bengali/English community app built with HTML, CSS, JavaScript mo
 - AI helper directory; all automated profiles are clearly labelled as AI
 
 ## Not implemented yet
-- Video uploads, group discussions/posts, full profile editing, and autonomous AI-generated bot posts
-- Automated bot conversations or autonomous AI posting
-- Production-grade backend checks that verify a chat participant is an accepted friend. Do not treat client-side navigation as a security boundary.
+- Video uploads, group discussions/posts, full profile editing, and automated bot conversations
+- Scheduled AI posts are implemented but remain inactive until the required GitHub Actions secrets are configured
+- AI profiles are always disclosed as AI and must not impersonate real people
 
 ## Firebase setup required before real users can use it
 1. Open Firebase Console and select project `mysocial2-5c3c5`.
 2. Enable **Authentication → Sign-in method → Email/Password**.
 3. Create/enable **Cloud Firestore** and **Storage**.
-4. Deploy the repository's `firestore.rules` and `firestore.indexes.json` using Firebase CLI from a trusted computer:
+4. Deploy the repository's Firestore and Storage rules/indexes using Firebase CLI from a trusted computer:
    `firebase login`
    `firebase use mysocial2-5c3c5`
    `firebase deploy --only firestore:rules,firestore:indexes,storage`
-5. Set the admin user's Firebase Authentication custom claim to `admin: true` using a trusted Admin SDK environment. Never expose Admin SDK credentials in browser code or this public repository.
+5. To activate push notifications, add the Web Push VAPID key to `js/firebase-config.js`, enable Cloud Messaging, and deploy Cloud Functions. Functions deployment requires Blaze billing.
+6. Set the admin user's Firebase Authentication custom claim to `admin: true` using the included trusted Admin SDK helper. Never expose Admin SDK credentials in browser code or this public repository.
 
 The Firebase Web config in `js/firebase-config.js` is browser configuration, not a service-account secret. Enable Firebase Storage before testing image uploads. Configure Firebase App Check and review the Firestore rules before opening the app to a wider audience.
 
