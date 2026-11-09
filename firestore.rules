@@ -112,10 +112,12 @@ service cloud.firestore {
         && request.resource.data.reportCount == 0
         && request.resource.data.likedBy is list
         && request.resource.data.likedBy.size() == 0
-        && (!('imagePath' in request.resource.data) || (request.resource.data.imagePath is string
+        && ((('imagePath' in request.resource.data) && ('imageUrl' in request.resource.data)
+          && request.resource.data.imagePath is string
           && request.resource.data.imagePath.matches('post-images/' + request.auth.uid + '/.*')
           && request.resource.data.imageUrl is string
-          && request.resource.data.imageUrl.matches('https://firebasestorage.googleapis.com/.*')));
+          && request.resource.data.imageUrl.matches('https://firebasestorage.googleapis.com/.*'))
+          || (!('imagePath' in request.resource.data) && !('imageUrl' in request.resource.data)));
       allow update: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text'])
         && validText(request.resource.data.text, 1000))
