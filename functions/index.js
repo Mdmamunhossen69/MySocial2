@@ -12,6 +12,7 @@ async function createAndSend(recipientUid, notificationId, title, body, type) {
   let shouldSend = false;
 
   await db.runTransaction(async (tx) => {
+    shouldSend = false;
     const existing = await tx.get(notificationRef);
     if (!existing.exists) {
       tx.create(notificationRef, {
