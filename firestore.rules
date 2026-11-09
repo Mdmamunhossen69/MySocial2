@@ -45,7 +45,7 @@ service cloud.firestore {
     match /posts/{postId} {
       allow read: if resource.data.status == 'published' || (signedIn() && resource.data.uid == request.auth.uid) || isAdmin();
       allow create: if signedIn()
-        && request.resource.data.keys().hasOnly(['uid','authorName','text','createdAt','status','reportCount'])
+        && request.resource.data.keys().hasOnly(['uid','authorName','text','createdAt','status','reportCount','likedBy'])
         && request.resource.data.uid == request.auth.uid
         && validText(request.resource.data.text, 1000)
         && request.resource.data.status == 'published'
@@ -68,6 +68,18 @@ service cloud.firestore {
       allow delete: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
     }
 
+
+      match /comments/{commentId} {
+        allow read: if get(/databases/$(database)/documents/posts/$(postId)).data.status == 'published';
+        allow create: if signedIn()
+          && get(/databases/$(database)/documents/posts/$(postId)).data.status == 'published'
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.keys().hasOnly(['uid','authorName','text','createdAt'])
+          && validText(request.resource.data.text, 500)
+          && validText(request.resource.data.authorName, 40);
+        allow update: if false;
+        allow delete: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      }
     match /reports/{reportId} {
       allow create: if signedIn()
         && request.resource.data.reporterUid == request.auth.uid
