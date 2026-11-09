@@ -181,7 +181,7 @@ service cloud.firestore {
       allow update: if signedIn() && request.auth.uid in resource.data.participants
         && exists(/databases/$(database)/documents/friendships/$(pairKey(resource.data.participants[0], resource.data.participants[1])))
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessage','updatedAt'])
-        && validText(request.resource.data.lastMessage, 120);
+        && (!('lastMessage' in request.resource.data) || validText(request.resource.data.lastMessage, 120));
       match /messages/{messageId} {
         allow read: if signedIn() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants
           && exists(/databases/$(database)/documents/friendships/$(chatId));
