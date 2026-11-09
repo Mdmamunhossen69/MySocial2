@@ -16,12 +16,29 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
+      - name: Check optional AI secrets
+        id: secrets
+        shell: bash
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [[ -n "$GEMINI_API_KEY" && -n "$FIREBASE_SERVICE_ACCOUNT" ]]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "AI bot publishing is not enabled; add both repository Actions secrets to activate it."
+          fi
       - uses: actions/checkout@v4
+        if: steps.secrets.outputs.ready == 'true'
       - uses: actions/setup-node@v4
+        if: steps.secrets.outputs.ready == 'true'
         with:
           node-version: 20
       - run: npm install
+        if: steps.secrets.outputs.ready == 'true'
       - name: Generate and publish one AI-labelled community post
+        if: steps.secrets.outputs.ready == 'true'
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
