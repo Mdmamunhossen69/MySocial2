@@ -29,10 +29,15 @@ async function searchMembers(){
 async function sendFriendRequest(uid,name){
   if(!state.user||uid===state.user.uid)return;
   try{
-    const {collection,query,where,getDocs,addDoc,serverTimestamp}=state.firebase;
-    const existing=await getDocs(query(collection(state.db,"friendRequests"),where("senderUid","==",state.user.uid),where("recipientUid","==",uid),where("status","==","pending")));
-    if(!existing.empty){toast("Request already sent");return}
-    await addDoc(collection(state.db,"friendRequests"),{senderUid:state.user.uid,senderName:state.user.displayName||"Member",recipientUid:uid,recipientName:name,status:"pending",createdAt:serverTimestamp()});
+    const {doc,getDoc,setDoc,serverTimestamp}=state.firebase;
+    const senderUid=state.user.uid;
+    const requestId=[senderUid,uid].sort().join("_");
+    const requestRef=doc(state.db,"friendRequests",requestId);
+    const friendshipRef=doc(state.db,"friendships",requestId);
+    const [requestSnap,friendshipSnap]=await Promise.all([getDoc(requestRef),getDoc(friendshipRef)]);
+    if(friendshipSnap.exists()){toast("আপনারা ইতোমধ্যে বন্ধু");return}
+    if(requestSnap.exists()){toast("এই সদস্যের সঙ্গে একটি অনুরোধ আগে থেকেই আছে");return}
+    await setDoc(requestRef,{senderUid,senderName:state.user.displayName||"Member",recipientUid:uid,recipientName:name,status:"pending",createdAt:serverTimestamp()});
     toast("Friend request sent");
   }catch(error){console.error(error);toast("Request failed")}
 }
@@ -46,24 +51,39 @@ function listenFriendRequests(){
   },error=>{console.error(error);toast("Requests could not load")});
 }
 async function respondFriendRequest(id,status){
-  try{await state.firebase.updateDoc(state.firebase.doc(state.db,"friendRequests",id),{status});toast(status==="accepted"?"Friend request accepted":"Request declined")}
-  catch(error){console.error(error);toast("Could not update request")}
+  try{
+    const {doc,getDoc,writeBatch,serverTimestamp}=state.firebase;
+    const requestRef=doc(state.db,"friendRequests",id);
+    const requestSnap=await getDoc(requestRef);
+    if(!requestSnap.exists()){toast("অনুরোধটি আর পাওয়া যাচ্ছে না");return}
+    const request=requestSnap.data();
+    if(request.recipientUid!==state.user.uid||request.status!=="pending"){toast("অনুরোধটি আপডেট করা যাচ্ছে না");return}
+    const batch=writeBatch(state.db);
+    batch.update(requestRef,{status});
+    if(status==="accepted"){
+      batch.set(doc(state.db,"friendships",id),{
+        senderUid:request.senderUid,recipientUid:request.recipientUid,
+        senderName:request.senderName||"Member",recipientName:request.recipientName||"Member",
+        members:[request.senderUid,request.recipientUid],createdAt:serverTimestamp()
+      });
+    }
+    await batch.commit();
+    toast(status==="accepted"?"Friend request accepted":"Request declined");
+  }catch(error){console.error(error);toast("Could not update request")}
 }
 
 
 function listenFriends(){
   const {collection,query,where,onSnapshot}=state.firebase;
-  const q1=query(collection(state.db,"friendRequests"),where("senderUid","==",state.user.uid),where("status","==","accepted"));
-  const q2=query(collection(state.db,"friendRequests"),where("recipientUid","==",state.user.uid),where("status","==","accepted"));
-  let left=[],right=[];
-  const render=()=>{
-    const map=new Map();
-    [...left,...right].forEach(x=>{const uid=x.senderUid===state.user.uid?x.recipientUid:x.senderUid;const name=x.senderUid===state.user.uid?x.recipientName:x.senderName;map.set(uid,{uid,name:name||"MySocial member"})});
-    state.friends=[...map.values()];
+  const q=query(collection(state.db,"friendships"),where("members","array-contains",state.user.uid));
+  onSnapshot(q,snap=>{
+    state.friends=snap.docs.map(d=>{
+      const f=d.data();
+      const otherIsSender=f.senderUid!==state.user.uid;
+      return {uid:otherIsSender?f.senderUid:f.recipientUid,name:(otherIsSender?f.senderName:f.recipientName)||"MySocial member"};
+    });
     $("friendsList").innerHTML=state.friends.length?state.friends.map(f=>'<div class="member-row"><div><strong>'+escapeHtml(f.name)+'</strong><small>Friend</small></div><button class="small-btn chat-start" data-uid="'+escapeHtml(f.uid)+'" data-name="'+escapeHtml(f.name)+'">Message</button></div>').join(""):'<p class="tiny muted">এখনো কোনো বন্ধু নেই। অনুরোধ গ্রহণ হলে এখানে দেখা যাবে।</p>';
-  };
-  onSnapshot(q1,s=>{left=s.docs.map(d=>d.data());render()},e=>console.error(e));
-  onSnapshot(q2,s=>{right=s.docs.map(d=>d.data());render()},e=>console.error(e));
+  },error=>{console.error(error);toast("বন্ধুদের তালিকা লোড করা যায়নি")});
 }
 function listenChats(){
   const {collection,query,where,onSnapshot}=state.firebase;
