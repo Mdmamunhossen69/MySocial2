@@ -266,8 +266,14 @@ async function resolveReport(id){
 }
 async function removeReportedPost(reportId,postId){
  if(!postId||!confirm("এই রিপোর্ট করা পোস্টটি মুছে ফেলবেন?"))return;
- try{await state.firebase.deleteDoc(state.firebase.doc(state.db,"posts",postId));await state.firebase.updateDoc(state.firebase.doc(state.db,"reports",reportId),{status:"actioned"});toast("পোস্ট সরানো হয়েছে")}
- catch(error){console.error(error);toast("পোস্ট সরানো যায়নি")}
+ try{
+  const postRef=state.firebase.doc(state.db,"posts",postId),postSnap=await state.firebase.getDoc(postRef);
+  const imagePath=postSnap.exists()?postSnap.data().imagePath:null;
+  await state.firebase.deleteDoc(postRef);
+  if(imagePath)await state.firebase.deleteObject(state.firebase.ref(state.storage,imagePath));
+  await state.firebase.updateDoc(state.firebase.doc(state.db,"reports",reportId),{status:"actioned"});
+  toast("পোস্ট সরানো হয়েছে");
+ }catch(error){console.error(error);toast("পোস্ট সরানো যায়নি")}
 }
 
 async function initFirebase(){if(!isFirebaseConfigured){$("connectionStatus").textContent="Firebase setup needed";return}try{const [appMod,authMod,dbMod,storageMod]=await Promise.all([import("https://www.gstatic.com/firebasejs/13.2.0/firebase-app.js"),import("https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js"),import("https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js"),import("https://www.gstatic.com/firebasejs/13.2.0/firebase-storage.js")]);state.firebase={...appMod,...authMod,...dbMod,...storageMod};const app=appMod.initializeApp(firebaseConfig);state.auth=authMod.getAuth(app);state.db=dbMod.getFirestore(app);state.storage=storageMod.getStorage(app);$("connectionStatus").textContent="Firebase connected";authMod.onAuthStateChanged(state.auth,async user=>{if(!user){if(state.adminReportsUnsubscribe){state.adminReportsUnsubscribe();state.adminReportsUnsubscribe=null}if(state.storiesUnsubscribe){state.storiesUnsubscribe();state.storiesUnsubscribe=null}if(state.groupsUnsubscribe){state.groupsUnsubscribe();state.groupsUnsubscribe=null}if(state.notificationUnsubscribe){state.notificationUnsubscribe();state.notificationUnsubscribe=null}setUser(null);state.posts=[];state.friendRequests=[];state.friends=[];state.chats=[];state.groupMemberships.clear();renderFeed();$("storyFeed").innerHTML='<p class="tiny muted">লগইন করলে স্টোরি দেখা যাবে।</p>';$("groupList").innerHTML='<p class="tiny muted">লগইন করলে গ্রুপ দেখা যাবে।</p>';$("notificationList").innerHTML='<p class="tiny muted">লগইন করলে নোটিফিকেশন দেখা যাবে।</p>';$("adminReports").innerHTML="";return}const token=await user.getIdTokenResult();setUser({...user,isAdmin:token.claims.admin===true});listenPosts();listenFriendRequests();listenFriends();listenChats();listenStories();listenGroups();listenNotifications();if(token.claims.admin===true)listenAdminReports()})}catch(error){console.error(error);$("connectionStatus").textContent="Connection error";toast("Firebase connection failed. Check config.")}}
