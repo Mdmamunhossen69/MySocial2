@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --check js/app.js && node --check js/bots.js && node --check js/firebase-config.js && node --check scripts/firestore-rules.test.mjs && node --check scripts/set-admin.mjs && node -e \"for (const f of ['firestore.indexes.json','firebase.json','manifest.webmanifest']) JSON.parse(require('node:fs').readFileSync(f,'utf8')); console.log('Configuration JSON valid')\"",
+    "test": "node --check js/app.js && node --check js/bots.js && node --check js/firebase-config.js && node --check scripts/firestore-rules.test.mjs && node --check scripts/set-admin.mjs && node --check functions/index.js && node -e \"for (const f of ['firestore.indexes.json','firebase.json','manifest.webmanifest']) JSON.parse(require('node:fs').readFileSync(f,'utf8')); console.log('Configuration JSON valid')\"",
     "test:rules": "firebase emulators:exec --only firestore --project demo-mysocial2 \"node scripts/firestore-rules.test.mjs\"",
     "set-admin": "node scripts/set-admin.mjs"
   },
