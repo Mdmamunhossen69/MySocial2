@@ -46,3 +46,12 @@ The validation workflow also runs Firestore Rules unit tests in the local emulat
 Run the local helper only on a trusted computer with Firebase Admin SDK Application Default Credentials:
 `GOOGLE_APPLICATION_CREDENTIALS=/secure/path/service-account.json npm run set-admin -- FIREBASE_AUTH_UID`
 The service-account file must stay outside the repository and must never be pasted into chat. After the claim is set, the administrator must sign out and sign back in. The script preserves any existing custom claims.
+
+## Push notifications
+1. In Firebase Console, enable Cloud Messaging and create a Web Push certificate key.
+2. Copy the VAPID key into `vapidKey` in `js/firebase-config.js` (leave it out of public documentation).
+3. Enable Firebase Storage and Cloud Messaging in the Firebase project.
+4. Cloud Functions require the Firebase project to use the Blaze billing plan. Review billing limits before deployment.
+5. Deploy with: `firebase deploy --only firestore:rules,firestore:indexes,storage,functions`.
+
+The app can register browser push tokens and the Functions send push messages for friend-request and acceptance events. Push will not work until the VAPID key is added, Cloud Messaging is enabled, and Functions are deployed.
