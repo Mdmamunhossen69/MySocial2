@@ -32,7 +32,7 @@ async function createAndSend(recipientUid, notificationId, title, body, type) {
     await getMessaging().sendEachForMulticast({
       tokens,
       notification: { title, body },
-      data: { type, notificationId, url: "/" }
+      data: { type, notificationId, url: "./" }
     });
   }
   await notificationRef.update({ pushSent: true, pushSentAt: FieldValue.serverTimestamp() });
