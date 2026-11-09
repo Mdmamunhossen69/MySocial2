@@ -56,3 +56,6 @@ The service-account file must stay outside the repository and must never be past
 5. Deploy with: `firebase deploy --only firestore:rules,firestore:indexes,storage,functions`.
 
 The app can register browser push tokens and the Functions send push messages for friend-request and acceptance events. Push will not work until the VAPID key is added, Cloud Messaging is enabled, and Functions are deployed.
+
+## Scheduled AI community posts
+The repository includes an optional daily GitHub Actions workflow that publishes one short post from a rotating AI profile. Every post is clearly labelled with `· AI`; automated profiles must not pretend to be real people. To enable it, add repository Actions secrets named `GEMINI_API_KEY` and `FIREBASE_SERVICE_ACCOUNT` (the full Firebase service-account JSON). Never commit the service-account file. The workflow can be run manually from the Actions tab after both secrets are configured.
