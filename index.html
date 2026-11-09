@@ -12,7 +12,16 @@
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="./" aria-label="MySocial2 home"><span class="brand-mark">M</span><span>MySocial<span class="brand-two">2</span></span></a>
+    <div class="topbar-left">
+      <a class="brand" href="./" aria-label="MySocial2 home"><span class="brand-mark">M</span><span>MySocial<span class="brand-two">2</span></span></a>
+      <div class="global-search"><span aria-hidden="true">⌕</span><input id="memberSearch" type="search" maxlength="40" placeholder="MySocial2-তে খুঁজুন" aria-label="Search members"><button id="memberSearchBtn" type="button" aria-label="Search">⌕</button></div>
+    </div>
+    <nav class="top-navigation" aria-label="Quick navigation">
+      <a class="top-nav-item active" href="#home" aria-label="Home"><span>⌂</span><small>হোম</small></a>
+      <a class="top-nav-item" href="#friends" aria-label="Friends"><span>♧</span><small>বন্ধু</small></a>
+      <a class="top-nav-item" href="#messages" aria-label="Messages"><span>✉</span><small>মেসেজ</small></a>
+      <a class="top-nav-item" href="#groups" aria-label="Groups"><span>▦</span><small>গ্রুপ</small></a>
+    </nav>
     <div class="top-actions">
       <button id="languageBtn" class="icon-btn" type="button" aria-label="Change language">EN</button>
       <button id="themeBtn" class="icon-btn" type="button" aria-label="Change theme">☾</button>
@@ -36,9 +45,9 @@
     </aside>
 
     <section class="main-column" id="home">
-      <section class="welcome panel">
-        <div><p class="eyebrow">YOUR COMMUNITY</p><h1 data-i18n="headline">আপনার মানুষের সঙ্গে যুক্ত থাকুন</h1><p class="muted" data-i18n="subheadline">ভাবনা, গল্প ও মুহূর্ত শেয়ার করুন।</p></div>
-        <div class="welcome-orb" aria-hidden="true">M²</div>
+      <section class="stories-panel panel" id="stories">
+        <div class="section-heading"><div><p class="eyebrow">YOUR CIRCLE</p><h2>স্টোরিজ</h2></div><span class="tiny muted">শিগগিরই আসছে</span></div>
+        <div class="story-row"><div class="story-tile create-story"><span class="story-plus">＋</span><strong>স্টোরি তৈরি</strong><small>আপনার মুহূর্ত শেয়ার করুন</small></div><div class="story-tile story-coming"><span class="story-ring">◉</span><strong>বন্ধুদের স্টোরি</strong><small>Stories feature coming soon</small></div><div class="story-tile story-coming story-third"><span class="story-ring">✦</span><strong>MySocial2</strong><small>নতুন আপডেটের অপেক্ষায়</small></div></div>
       </section>
 
       <section class="auth-card panel" id="authPanel">
@@ -61,8 +70,8 @@
 
       <section class="feed-section"><div class="section-heading feed-heading"><div><p class="eyebrow">COMMUNITY</p><h2 data-i18n="latestPosts">সাম্প্রতিক পোস্ট</h2></div><span class="tiny muted" id="feedCount">0 posts</span></div><div id="feed" class="feed-list"><div class="empty-state panel"><div class="empty-icon">✧</div><h3 data-i18n="emptyFeed">এখনো কোনো পোস্ট নেই</h3><p class="muted" data-i18n="emptyFeedHint">প্রথম পোস্টটি আপনিই করতে পারেন।</p></div></div></section>
 
-      <section class="bots-section panel" id="stories"><div class="section-heading"><div><p class="eyebrow">AI COMMUNITY</p><h2 data-i18n="aiCorner">AI কর্নার</h2></div><span class="status-pill">AI-labelled</span></div><div id="botList" class="bot-list"></div><p class="tiny muted" data-i18n="botDisclosure">এখানে দেখানো সহকারীরা AI; তারা বাস্তব মানুষ নয়।</p></section>
-      <section class="panel secondary-section" id="friends"><div class="section-heading"><h2 data-i18n="friends">বন্ধু</h2><span class="status-pill"><span id="requestCount">0</span> pending</span></div><p class="muted">নাম লিখে MySocial2 সদস্য খুঁজুন এবং friend request পাঠান।</p><div class="member-search"><input id="memberSearch" type="search" maxlength="40" placeholder="সদস্যের নাম লিখুন"><button class="primary-btn" id="memberSearchBtn" type="button">খুঁজুন</button></div><div id="memberResults" class="member-list"><p class="tiny muted">সদস্য খুঁজতে নাম লিখুন।</p></div><h3 class="subheading">Friend requests</h3><div id="friendRequests" class="member-list"><p class="tiny muted">লগইন করলে অনুরোধ দেখা যাবে।</p></div><h3 class="subheading">My friends</h3><div id="friendsList" class="member-list"><p class="tiny muted">লগইন করলে বন্ধুদের তালিকা দেখা যাবে।</p></div></section>
+      <section class="bots-section panel" id="aiCorner"><div class="section-heading"><div><p class="eyebrow">AI COMMUNITY</p><h2 data-i18n="aiCorner">AI কর্নার</h2></div><span class="status-pill">AI-labelled</span></div><div id="botList" class="bot-list"></div><p class="tiny muted" data-i18n="botDisclosure">এখানে দেখানো সহকারীরা AI; তারা বাস্তব মানুষ নয়।</p></section>
+      <section class="panel secondary-section" id="friends"><div class="section-heading"><h2 data-i18n="friends">বন্ধু</h2><span class="status-pill"><span id="requestCount">0</span> pending</span></div><p class="muted">নাম লিখে MySocial2 সদস্য খুঁজুন এবং friend request পাঠান।</p><p class="tiny muted">উপরের সার্চ বক্সে সদস্যের নাম লিখে খুঁজুন।</p><div id="memberResults" class="member-list"><p class="tiny muted">সদস্য খুঁজতে নাম লিখুন।</p></div><h3 class="subheading">Friend requests</h3><div id="friendRequests" class="member-list"><p class="tiny muted">লগইন করলে অনুরোধ দেখা যাবে।</p></div><h3 class="subheading">My friends</h3><div id="friendsList" class="member-list"><p class="tiny muted">লগইন করলে বন্ধুদের তালিকা দেখা যাবে।</p></div></section>
       <section class="panel secondary-section" id="messages"><div class="section-heading"><h2 data-i18n="messages">মেসেজ</h2><span class="status-pill">Private chat</span></div><div class="chat-layout"><div id="chatList" class="chat-list"><p class="tiny muted">বন্ধুদের সঙ্গে চ্যাট শুরু করুন।</p></div><div class="chat-window"><h3 id="activeChatTitle">একটি কথোপকথন বেছে নিন</h3><div id="messageList" class="message-list"><p class="tiny muted">বন্ধু তালিকা থেকে Message চাপুন।</p></div><form id="chatForm" class="chat-composer hidden"><input id="messageText" maxlength="2000" placeholder="একটি মেসেজ লিখুন…" required><button class="primary-btn" type="submit">পাঠান</button></form></div></div></section>
       <section class="panel secondary-section" id="notifications"><h2 data-i18n="notifications">নোটিফিকেশন</h2><p class="muted" data-i18n="notificationsSoon">নোটিফিকেশন সেন্টার পরবর্তী ধাপে যুক্ত হবে।</p></section>
       <section class="panel secondary-section" id="profile"><h2 data-i18n="profile">প্রোফাইল</h2><div id="profileSummary" class="muted">লগইন করলে আপনার প্রোফাইল এখানে দেখা যাবে।</div></section>
@@ -70,6 +79,7 @@
     </section>
 
     <aside class="right-column">
+      <section class="panel side-card contacts-card"><div class="side-title"><h3>পরিচিত মানুষ</h3><span class="online-dot"></span></div><p class="muted">বন্ধু হিসেবে যুক্ত হলে তাদের তালিকা এখানে দেখা যাবে।</p><a href="#friends" class="side-link">বন্ধুদের দেখুন →</a></section>
       <section class="panel side-card"><p class="eyebrow">COMMUNITY GUIDELINES</p><h3 data-i18n="safeSpace">নিরাপদ কমিউনিটি</h3><ul class="guideline-list"><li data-i18n="guideline1">সম্মানজনক ভাষা ব্যবহার করুন</li><li data-i18n="guideline2">ব্যক্তিগত তথ্য প্রকাশ করবেন না</li><li data-i18n="guideline3">সমস্যাজনক পোস্ট রিপোর্ট করুন</li></ul></section>
       <section class="panel side-card"><p class="eyebrow">ABOUT</p><h3>MySocial2</h3><p class="muted" data-i18n="aboutText">মানুষের সঙ্গে সংযোগ, গল্প ও ইতিবাচক কমিউনিটি।</p><span class="tiny muted">© 2026 MySocial2</span></section>
     </aside>
