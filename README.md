@@ -36,3 +36,6 @@ GitHub Actions runs `npm test` on pushes and pull requests. This checks JavaScri
 ## Hosting
 Enable GitHub Pages for the `main` branch and repository root:
 https://mdmamunhossen69.github.io/MySocial2/
+
+## Security checks
+The validation workflow also runs Firestore Rules unit tests in the local emulator. The rules require a confirmed friendship document before private chats and messages are readable or writable. Friend requests use a deterministic pair ID; accepting a request and creating the friendship record happen in one batch.
