@@ -15,6 +15,33 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    match /publicProfiles/{userId} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.auth.uid == userId
+        && request.resource.data.keys().hasOnly(['displayName','createdAt'])
+        && validText(request.resource.data.displayName, 40);
+      allow update: if signedIn() && request.auth.uid == userId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName'])
+        && validText(request.resource.data.displayName, 40);
+      allow delete: if signedIn() && request.auth.uid == userId;
+    }
+
+    match /friendRequests/{requestId} {
+      allow read: if signedIn() && (resource.data.senderUid == request.auth.uid || resource.data.recipientUid == request.auth.uid);
+      allow create: if signedIn()
+        && request.resource.data.senderUid == request.auth.uid
+        && request.resource.data.recipientUid is string
+        && request.resource.data.recipientUid != request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.keys().hasOnly(['senderUid','senderName','recipientUid','recipientName','status','createdAt']);
+      allow update: if signedIn()
+        && resource.data.recipientUid == request.auth.uid
+        && resource.data.status == 'pending'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+        && request.resource.data.status in ['accepted','declined'];
+      allow delete: if false;
+    }
+
     match /posts/{postId} {
       allow read: if resource.data.status == 'published' || (signedIn() && resource.data.uid == request.auth.uid) || isAdmin();
       allow create: if signedIn()
