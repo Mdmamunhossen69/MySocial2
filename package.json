@@ -1,0 +1,12 @@
+{
+  "name": "mysocial2",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --check js/app.js && node --check js/bots.js && node --check js/firebase-config.js && node -e \"for (const f of ['firestore.indexes.json','firebase.json','manifest.webmanifest']) JSON.parse(require('node:fs').readFileSync(f,'utf8')); console.log('Configuration JSON valid')\""
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
