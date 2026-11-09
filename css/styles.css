@@ -176,3 +176,6 @@ body.dark .create-story{background:linear-gradient(155deg,#233d5c,#1e3149);color
 .group-form{display:grid;gap:8px;margin:12px 0}
 .group-form input{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:inherit}
 .group-row{align-items:center}
+
+.notification-row.is-read{opacity:.68}
+.notification-row small,.group-row small{max-width:100%;overflow-wrap:anywhere}
