@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { initializeTestEnvironment, assertFails, assertSucceeds } from "@firebase/rules-unit-testing";
-import { doc, setDoc, updateDoc, writeBatch, addDoc, collection, arrayUnion, arrayRemove, serverTimestamp } from "firebase/firestore";
+import { doc, setDoc, updateDoc, writeBatch, addDoc, collection, arrayUnion, arrayRemove, serverTimestamp, Timestamp } from "firebase/firestore";
 
 const projectId = "demo-mysocial2";
 const rules = readFileSync(new URL("../firestore.rules", import.meta.url), "utf8");
@@ -46,6 +46,33 @@ try {
   }));
   await assertSucceeds(updateDoc(doc(bob, "posts", "sample-post"), { likedBy: arrayUnion("bob") }));
   await assertFails(updateDoc(doc(charlie, "posts", "sample-post"), { likedBy: arrayRemove("bob") }));
+
+  await assertSucceeds(setDoc(doc(alice, "stories", "alice-story"), {
+    uid: "alice", authorName: "Alice", text: "A 24-hour story",
+    createdAt: serverTimestamp(), expiresAt: Timestamp.fromMillis(Date.now() + 23 * 60 * 60 * 1000)
+  }));
+  await assertFails(setDoc(doc(alice, "stories", "too-long-story"), {
+    uid: "alice", authorName: "Alice", text: "Too long",
+    createdAt: serverTimestamp(), expiresAt: Timestamp.fromMillis(Date.now() + 25 * 60 * 60 * 1000)
+  }));
+
+  await assertSucceeds(setDoc(doc(alice, "groups", "public-group"), {
+    name: "Community", description: "A public group", createdBy: "alice",
+    createdAt: serverTimestamp(), visibility: "public"
+  }));
+  await assertSucceeds(setDoc(doc(alice, "groups", "public-group", "members", "alice"), {
+    uid: "alice", displayName: "Alice", joinedAt: serverTimestamp()
+  }));
+  await assertSucceeds(setDoc(doc(bob, "groups", "public-group", "members", "bob"), {
+    uid: "bob", displayName: "Bob", joinedAt: serverTimestamp()
+  }));
+
+  await assertSucceeds(setDoc(doc(alice, "posts", "image-only-post"), {
+    uid: "alice", authorName: "Alice", text: "", createdAt: serverTimestamp(),
+    status: "published", reportCount: 0, likedBy: [],
+    imageUrl: "https://firebasestorage.googleapis.com/v0/b/demo/o/image",
+    imagePath: "post-images/alice/image.png"
+  }));
 
   console.log("Firestore security rules tests passed.");
 } finally {
