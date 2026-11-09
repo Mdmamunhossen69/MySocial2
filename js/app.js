@@ -79,9 +79,11 @@ function listenChats(){
 async function openChat(uid,name){
   const participants=[state.user.uid,uid].sort();
   const chatId=participants.join("_");
-  const {doc,setDoc,serverTimestamp}=state.firebase;
+  const {doc,getDoc,setDoc,serverTimestamp}=state.firebase;
   try{
-    await setDoc(doc(state.db,"chats",chatId),{participants,createdAt:serverTimestamp(),updatedAt:serverTimestamp()},{merge:true});
+    const chatRef=doc(state.db,"chats",chatId);
+    const existingChat=await getDoc(chatRef);
+    if(!existingChat.exists()) await setDoc(chatRef,{participants,createdAt:serverTimestamp(),updatedAt:serverTimestamp()});
     state.activeChatId=chatId;
     $("activeChatTitle").textContent=name;
     $("chatComposer").classList.remove("hidden");
