@@ -1,37 +1,38 @@
 # MySocial2
 
-A mobile-first social community web app built with HTML, CSS, JavaScript modules and Firebase.
+A mobile-first Bengali/English community app built with HTML, CSS, JavaScript modules, Firebase Authentication and Cloud Firestore.
 
-## Current features
-- Responsive social-network interface with Bengali/English toggle and dark theme
+## Implemented in the repository
+- Responsive social-network layout, Bengali/English toggle, dark theme and installable PWA shell
 - Firebase email/password registration and login
-- Text posts, live feed, author deletion and post reporting
-- Member search, friend requests and accepted-friends list
-- Private text chat between accepted friends
+- Public text feed with real-time updates
+- Create and delete your own posts
+- Like/unlike posts and add/read recent comments
+- Report posts; trusted admins can review reports, resolve them, or remove reported posts
+- Search member profiles, send/accept/decline friend requests
+- Private text chat between accepted friends in the normal UI flow
 - AI helper directory; all automated profiles are clearly labelled as AI
-- Installable PWA shell and offline app-shell fallback
 
-## Important limitations
-- Stories, image/video uploads, reactions, comments, groups and a full notification center are not implemented.
-- The admin area is a protected placeholder. Admin status requires a trusted Firebase Authentication custom claim named `admin: true`; never grant this from browser code.
-- The site code can be published with GitHub Pages, but Firebase rules and indexes must also be deployed to the Firebase project before production use.
-- No live Firebase account-to-account test is claimed by this repository note.
+## Not implemented yet
+- Stories, groups, image/video uploads, push notifications, full profile editing and a full notification center
+- Automated bot conversations or autonomous AI posting
+- Production-grade backend checks that verify a chat participant is an accepted friend. Do not treat client-side navigation as a security boundary.
 
-## Firebase setup
-1. In Firebase Console, select project `mysocial2-5c3c5`.
+## Firebase setup required before real users can use it
+1. Open Firebase Console and select project `mysocial2-5c3c5`.
 2. Enable **Authentication → Sign-in method → Email/Password**.
 3. Create/enable **Cloud Firestore**.
-4. From a trusted computer with Firebase CLI installed and access to this project, run:
+4. Deploy the repository's `firestore.rules` and `firestore.indexes.json` using Firebase CLI from a trusted computer:
    `firebase login`
    `firebase use mysocial2-5c3c5`
    `firebase deploy --only firestore:rules,firestore:indexes`
-5. Confirm the deployed rules and indexes in Firebase Console. Do not upload service-account keys or Admin SDK credentials to this public repository.
+5. Set the admin user's Firebase Authentication custom claim to `admin: true` using a trusted Admin SDK environment. Never expose Admin SDK credentials in browser code or this public repository.
 
-The Firebase Web config in `js/firebase-config.js` is client configuration, not a secret. Protect data with Firestore rules and Firebase App Check before opening the platform to a wider audience.
+The Firebase Web config in `js/firebase-config.js` is browser configuration, not a service-account secret. Configure Firebase App Check and review the Firestore rules before opening the app to a wider audience.
 
-## Local checks
-Run `npm test` with Node.js 20 or later. This checks JavaScript syntax and JSON configuration files.
+## Checks
+GitHub Actions runs `npm test` on pushes and pull requests. This checks JavaScript syntax and JSON configuration. It does **not** prove that Firebase services are configured, Firestore rules are deployed, or two real user accounts can complete live flows. Those require Firebase project access and live testing.
 
 ## Hosting
-Enable GitHub Pages for the `main` branch and repository root. The site URL is:
+Enable GitHub Pages for the `main` branch and repository root:
 https://mdmamunhossen69.github.io/MySocial2/
