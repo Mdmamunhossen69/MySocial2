@@ -49,13 +49,32 @@ if (recent.docs.some((item) => item.data().text?.toLocaleLowerCase("bn").replace
   process.exit(0);
 }
 
-await db.collection("posts").add({
-  uid: botUid,
-  authorName: bot.name + " · AI",
-  text,
-  createdAt: FieldValue.serverTimestamp(),
-  status: "published",
-  reportCount: 0,
-  likedBy: []
+const dayKey = new Date().toISOString().slice(0, 10);
+const dailyRunRef = db.collection("botRuns").doc(dayKey);
+const reserved = await db.runTransaction(async (tx) => {
+  const existing = await tx.get(dailyRunRef);
+  if (existing.exists) return false;
+  tx.create(dailyRunRef, { botUid, status: "publishing", createdAt: FieldValue.serverTimestamp() });
+  return true;
 });
-console.log("Published one clearly labelled AI post from " + bot.name + ".");
+if (!reserved) {
+  console.log("A scheduled AI post already ran today.");
+  process.exit(0);
+}
+
+try {
+  const postRef = await db.collection("posts").add({
+    uid: botUid,
+    authorName: bot.name + " · AI",
+    text,
+    createdAt: FieldValue.serverTimestamp(),
+    status: "published",
+    reportCount: 0,
+    likedBy: []
+  });
+  await dailyRunRef.update({ status: "published", postId: postRef.id });
+  console.log("Published one clearly labelled AI post from " + bot.name + ".");
+} catch (error) {
+  await dailyRunRef.delete();
+  throw error;
+}
