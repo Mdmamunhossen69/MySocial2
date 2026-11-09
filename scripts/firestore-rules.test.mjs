@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { initializeTestEnvironment, assertFails, assertSucceeds } from "@firebase/rules-unit-testing";
-import { doc, setDoc, updateDoc, writeBatch, addDoc, collection, arrayUnion, arrayRemove, serverTimestamp, Timestamp } from "firebase/firestore";
+import { doc, setDoc, getDoc, updateDoc, writeBatch, addDoc, collection, arrayUnion, arrayRemove, serverTimestamp, Timestamp } from "firebase/firestore";
 
 const projectId = "demo-mysocial2";
 const rules = readFileSync(new URL("../firestore.rules", import.meta.url), "utf8");
@@ -73,6 +73,24 @@ try {
     imageUrl: "https://firebasestorage.googleapis.com/v0/b/demo/o/image",
     imagePath: "post-images/alice/image.png"
   }));
+
+  await assertSucceeds(setDoc(doc(bob, "users", "bob", "fcmTokens", "token-1"), {
+    token: "valid-fcm-token", createdAt: serverTimestamp()
+  }));
+  await assertFails(setDoc(doc(charlie, "users", "bob", "fcmTokens", "token-2"), {
+    token: "not-your-token", createdAt: serverTimestamp()
+  }));
+
+  await env.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), "notifications", "bob-notice"), {
+      recipientUid: "bob", title: "Test", body: "A test notification", read: false,
+      createdAt: serverTimestamp()
+    });
+  });
+  await assertSucceeds(getDoc(doc(bob, "notifications", "bob-notice")));
+  await assertSucceeds(updateDoc(doc(bob, "notifications", "bob-notice"), { read: true }));
+  await assertFails(getDoc(doc(charlie, "notifications", "bob-notice")));
+  await assertFails(updateDoc(doc(charlie, "notifications", "bob-notice"), { read: true }));
 
   console.log("Firestore security rules tests passed.");
 } finally {
