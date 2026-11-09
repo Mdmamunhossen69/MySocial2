@@ -81,9 +81,11 @@ service cloud.firestore {
         && request.resource.data.likedBy.size() >= resource.data.get('likedBy', []).size() - 1
         && ((request.resource.data.likedBy.hasAll(resource.data.get('likedBy', []))
           && request.resource.data.likedBy.size() == resource.data.get('likedBy', []).size() + 1
+          && !resource.data.get('likedBy', []).hasAny([request.auth.uid])
           && request.resource.data.likedBy.hasAny([request.auth.uid]))
           || (resource.data.get('likedBy', []).hasAll(request.resource.data.likedBy)
           && request.resource.data.likedBy.size() == resource.data.get('likedBy', []).size() - 1
+          && resource.data.get('likedBy', []).hasAny([request.auth.uid])
           && !request.resource.data.likedBy.hasAny([request.auth.uid]))));
       allow delete: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
     }
