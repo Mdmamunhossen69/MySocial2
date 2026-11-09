@@ -29,15 +29,10 @@ async function searchMembers(){
 async function sendFriendRequest(uid,name){
   if(!state.user||uid===state.user.uid)return;
   try{
-    const {doc,getDoc,setDoc,serverTimestamp}=state.firebase;
+    const {doc,setDoc,serverTimestamp}=state.firebase;
     const senderUid=state.user.uid;
     const requestId=[senderUid,uid].sort().join("_");
-    const requestRef=doc(state.db,"friendRequests",requestId);
-    const friendshipRef=doc(state.db,"friendships",requestId);
-    const [requestSnap,friendshipSnap]=await Promise.all([getDoc(requestRef),getDoc(friendshipRef)]);
-    if(friendshipSnap.exists()){toast("আপনারা ইতোমধ্যে বন্ধু");return}
-    if(requestSnap.exists()){toast("এই সদস্যের সঙ্গে একটি অনুরোধ আগে থেকেই আছে");return}
-    await setDoc(requestRef,{senderUid,senderName:state.user.displayName||"Member",recipientUid:uid,recipientName:name,status:"pending",createdAt:serverTimestamp()});
+    await setDoc(doc(state.db,"friendRequests",requestId),{senderUid,senderName:state.user.displayName||"Member",recipientUid:uid,recipientName:name,status:"pending",createdAt:serverTimestamp()});
     toast("Friend request sent");
   }catch(error){console.error(error);toast("Request failed")}
 }
@@ -100,11 +95,10 @@ function listenChats(){
 async function openChat(uid,name){
   const participants=[state.user.uid,uid].sort();
   const chatId=participants.join("_");
-  const {doc,getDoc,setDoc,serverTimestamp}=state.firebase;
+  const {doc,setDoc,serverTimestamp}=state.firebase;
   try{
     const chatRef=doc(state.db,"chats",chatId);
-    const existingChat=await getDoc(chatRef);
-    if(!existingChat.exists()) await setDoc(chatRef,{participants,createdAt:serverTimestamp(),updatedAt:serverTimestamp()});
+    await setDoc(chatRef,{participants,updatedAt:serverTimestamp()},{merge:true});
     state.activeChatId=chatId;
     $("activeChatTitle").textContent=name;
     $("chatForm").classList.remove("hidden");
