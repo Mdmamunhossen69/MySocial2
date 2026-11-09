@@ -39,3 +39,8 @@ https://mdmamunhossen69.github.io/MySocial2/
 
 ## Security checks
 The validation workflow also runs Firestore Rules unit tests in the local emulator. The rules require a confirmed friendship document before private chats and messages are readable or writable. Friend requests use a deterministic pair ID; accepting a request and creating the friendship record happen in one batch.
+
+### Assign the first administrator
+Run the local helper only on a trusted computer with Firebase Admin SDK Application Default Credentials:
+`GOOGLE_APPLICATION_CREDENTIALS=/secure/path/service-account.json npm run set-admin -- FIREBASE_AUTH_UID`
+The service-account file must stay outside the repository and must never be pasted into chat. After the claim is set, the administrator must sign out and sign back in. The script preserves any existing custom claims.
