@@ -29,6 +29,8 @@ try {
   await assertSucceeds(setDoc(doc(alice, "chats", requestId), {
     participants: ["alice", "bob"], updatedAt: serverTimestamp()
   }));
+  await assertSucceeds(updateDoc(doc(alice, "chats", requestId), { updatedAt: serverTimestamp() }));
+  await assertSucceeds(updateDoc(doc(alice, "chats", requestId), { lastMessage: "Hello", updatedAt: serverTimestamp() }));
   await assertSucceeds(addDoc(collection(alice, "chats", requestId, "messages"), {
     senderUid: "alice", text: "Hello", createdAt: serverTimestamp()
   }));
