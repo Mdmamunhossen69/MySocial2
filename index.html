@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="bn">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#635bff">
+  <meta name="description" content="MySocial2 — একটি নিরাপদ ও সহজ সামাজিক যোগাযোগ প্ল্যাটফর্ম।">
+  <title>MySocial2 — Connect & Share</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./assets/icon-192.png">
+  <link rel="stylesheet" href="./css/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="./" aria-label="MySocial2 home"><span class="brand-mark">M</span><span>MySocial<span class="brand-two">2</span></span></a>
+    <div class="top-actions">
+      <button id="languageBtn" class="icon-btn" type="button" aria-label="Change language">EN</button>
+      <button id="themeBtn" class="icon-btn" type="button" aria-label="Change theme">☾</button>
+      <button id="installBtn" class="small-btn hidden" type="button">Install app</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <aside class="sidebar panel">
+      <div class="user-mini" id="sidebarUser"><div class="avatar">M</div><div><strong>MySocial2</strong><small data-i18n="welcome">স্বাগতম</small></div></div>
+      <nav class="nav-list" aria-label="Main navigation">
+        <a class="nav-item active" href="#home">⌂ <span data-i18n="home">হোম</span></a>
+        <a class="nav-item" href="#stories">◉ <span data-i18n="stories">স্টোরিজ</span></a>
+        <a class="nav-item" href="#friends">♧ <span data-i18n="friends">বন্ধু</span></a>
+        <a class="nav-item" href="#messages">✉ <span data-i18n="messages">মেসেজ</span></a>
+        <a class="nav-item" href="#notifications">♢ <span data-i18n="notifications">নোটিফিকেশন</span></a>
+        <a class="nav-item" href="#profile">◎ <span data-i18n="profile">প্রোফাইল</span></a>
+        <button class="nav-item nav-button" id="adminNav" type="button" hidden>⚙ <span>Admin dashboard</span></button>
+      </nav>
+      <div class="sidebar-note"><strong>MySocial2</strong><p data-i18n="sidebarNote">বন্ধুদের সঙ্গে যুক্ত থাকুন, নিরাপদে শেয়ার করুন।</p></div>
+    </aside>
+
+    <section class="main-column" id="home">
+      <section class="welcome panel">
+        <div><p class="eyebrow">YOUR COMMUNITY</p><h1 data-i18n="headline">আপনার মানুষের সঙ্গে যুক্ত থাকুন</h1><p class="muted" data-i18n="subheadline">ভাবনা, গল্প ও মুহূর্ত শেয়ার করুন।</p></div>
+        <div class="welcome-orb" aria-hidden="true">M²</div>
+      </section>
+
+      <section class="auth-card panel" id="authPanel">
+        <div class="section-heading"><div><p class="eyebrow">ACCOUNT</p><h2 data-i18n="accountTitle">শুরু করুন</h2></div><span class="status-pill" id="connectionStatus">Demo preview</span></div>
+        <div class="auth-tabs"><button class="tab active" id="loginTab" type="button" data-i18n="login">লগইন</button><button class="tab" id="registerTab" type="button" data-i18n="register">রেজিস্ট্রেশন</button></div>
+        <form id="authForm">
+          <label><span data-i18n="email">ইমেইল</span><input id="emailInput" type="email" autocomplete="email" placeholder="you@example.com" required></label>
+          <label><span data-i18n="password">পাসওয়ার্ড</span><input id="passwordInput" type="password" autocomplete="current-password" minlength="6" required></label>
+          <label id="nameField" class="hidden"><span data-i18n="fullName">আপনার নাম</span><input id="nameInput" type="text" maxlength="40" autocomplete="name"></label>
+          <button class="primary-btn full" id="authSubmit" type="submit">লগইন</button>
+          <p class="form-message" id="authMessage" role="status"></p>
+        </form>
+        <p class="tiny muted" data-i18n="firebaseHint">নিজের Firebase Web config যোগ করলে অ্যাকাউন্ট ও পোস্ট সংরক্ষিত হবে।</p>
+      </section>
+
+      <section class="composer panel" id="composerPanel">
+        <div class="section-heading"><div><p class="eyebrow">SHARE SOMETHING</p><h2 data-i18n="createPost">নতুন পোস্ট</h2></div><span class="soft-icon">✎</span></div>
+        <form id="postForm"><textarea id="postText" maxlength="1000" rows="3" placeholder="আজ আপনার মনে কী আছে?" data-i18n-placeholder="postPlaceholder" required></textarea><div class="composer-footer"><span class="tiny muted" id="postHint">সর্বোচ্চ ১০০০ অক্ষর</span><button class="primary-btn" type="submit" id="publishBtn" disabled data-i18n="publish">পোস্ট করুন</button></div></form>
+      </section>
+
+      <section class="feed-section"><div class="section-heading feed-heading"><div><p class="eyebrow">COMMUNITY</p><h2 data-i18n="latestPosts">সাম্প্রতিক পোস্ট</h2></div><span class="tiny muted" id="feedCount">0 posts</span></div><div id="feed" class="feed-list"><div class="empty-state panel"><div class="empty-icon">✧</div><h3 data-i18n="emptyFeed">এখনো কোনো পোস্ট নেই</h3><p class="muted" data-i18n="emptyFeedHint">প্রথম পোস্টটি আপনিই করতে পারেন।</p></div></div></section>
+
+      <section class="bots-section panel" id="stories"><div class="section-heading"><div><p class="eyebrow">AI COMMUNITY</p><h2 data-i18n="aiCorner">AI কর্নার</h2></div><span class="status-pill">AI-labelled</span></div><div id="botList" class="bot-list"></div><p class="tiny muted" data-i18n="botDisclosure">এখানে দেখানো সহকারীরা AI; তারা বাস্তব মানুষ নয়।</p></section>
+      <section class="panel secondary-section" id="friends"><h2 data-i18n="friends">বন্ধু</h2><p class="muted" data-i18n="friendsSoon">বন্ধু খোঁজা ও friend request ফিচার পরবর্তী ধাপে যুক্ত হবে।</p></section>
+      <section class="panel secondary-section" id="messages"><h2 data-i18n="messages">মেসেজ</h2><p class="muted" data-i18n="messagesSoon">নিরাপদ ব্যক্তিগত মেসেজিং পরবর্তী ধাপে যুক্ত হবে।</p></section>
+      <section class="panel secondary-section" id="notifications"><h2 data-i18n="notifications">নোটিফিকেশন</h2><p class="muted" data-i18n="notificationsSoon">নোটিফিকেশন সেন্টার পরবর্তী ধাপে যুক্ত হবে।</p></section>
+      <section class="panel secondary-section" id="profile"><h2 data-i18n="profile">প্রোফাইল</h2><div id="profileSummary" class="muted">লগইন করলে আপনার প্রোফাইল এখানে দেখা যাবে।</div></section>
+      <section class="panel secondary-section hidden" id="adminPanel"><div class="section-heading"><h2>Admin dashboard</h2><span class="status-pill">Admin only</span></div><p class="muted">Moderation tools are available only to accounts with a trusted Firebase admin custom claim.</p><div id="adminSummary"></div></section>
+    </section>
+
+    <aside class="right-column">
+      <section class="panel side-card"><p class="eyebrow">COMMUNITY GUIDELINES</p><h3 data-i18n="safeSpace">নিরাপদ কমিউনিটি</h3><ul class="guideline-list"><li data-i18n="guideline1">সম্মানজনক ভাষা ব্যবহার করুন</li><li data-i18n="guideline2">ব্যক্তিগত তথ্য প্রকাশ করবেন না</li><li data-i18n="guideline3">সমস্যাজনক পোস্ট রিপোর্ট করুন</li></ul></section>
+      <section class="panel side-card"><p class="eyebrow">ABOUT</p><h3>MySocial2</h3><p class="muted" data-i18n="aboutText">মানুষের সঙ্গে সংযোগ, গল্প ও ইতিবাচক কমিউনিটি।</p><span class="tiny muted">© 2026 MySocial2</span></section>
+    </aside>
+  </main>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>
