@@ -20,7 +20,7 @@ async function searchMembers(){
   if(term.length<2){$("memberResults").innerHTML='<p class="muted tiny">কমপক্ষে ২টি অক্ষর লিখুন।</p>';return}
   try{
     const {collection,query,orderBy,startAt,endAt,limit,getDocs}=state.firebase;
-    const q=query(collection(state.db,"publicProfiles"),orderBy("displayName"),startAt(term),endAt(term+"\\uf8ff"),limit(10));
+    const q=query(collection(state.db,"publicProfiles"),orderBy("displayName"),startAt(term),endAt(term+"\uf8ff"),limit(10));
     const snap=await getDocs(q);
     const members=snap.docs.filter(d=>d.id!==state.user.uid);
     $("memberResults").innerHTML=members.length?members.map(d=>'<div class="member-row"><div><strong>'+escapeHtml(d.data().displayName||"Member")+'</strong><small>MySocial member</small></div><button class="small-btn friend-add" data-uid="'+escapeHtml(d.id)+'" data-name="'+escapeHtml(d.data().displayName||"Member")+'">Add friend</button></div>').join(""):'<p class="muted tiny">কোনো সদস্য পাওয়া যায়নি।</p>';
