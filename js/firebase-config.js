@@ -1,16 +1,16 @@
-// Firebase Web configuration only. Never put service-account keys or private credentials here.
-// Replace these placeholders with the config from Firebase Console > Project settings > Your apps.
-// Project selected for MySocial2: mysocial2-5c3c5
+// Firebase Web client configuration for MySocial2.
+// This is browser-side configuration, not a service-account credential.
+// Never add service-account JSON, private keys, or Admin SDK credentials here.
 export const firebaseConfig = {
-  apiKey: "YOUR_FIREBASE_WEB_API_KEY",
+  apiKey: "AIzaSyAIjCW1UP3yDTap6VTDzNP62Ot0BHNm_WI",
   authDomain: "mysocial2-5c3c5.firebaseapp.com",
   projectId: "mysocial2-5c3c5",
   storageBucket: "mysocial2-5c3c5.firebasestorage.app",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_FIREBASE_APP_ID"
+  messagingSenderId: "120207339127",
+  appId: "1:120207339127:web:4fd5c5e5ffb57348b0a072"
 };
 export const isFirebaseConfigured = Boolean(
-  firebaseConfig.apiKey && !firebaseConfig.apiKey.startsWith("YOUR_") &&
-  firebaseConfig.messagingSenderId && !firebaseConfig.messagingSenderId.startsWith("YOUR_") &&
-  firebaseConfig.appId && !firebaseConfig.appId.startsWith("YOUR_")
+  firebaseConfig.apiKey && firebaseConfig.authDomain &&
+  firebaseConfig.projectId && firebaseConfig.messagingSenderId &&
+  firebaseConfig.appId
 );
