@@ -1,0 +1,59 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function isAdmin() { return signedIn() && request.auth.token.admin == true; }
+    function validText(value, max) { return value is string && value.size() > 0 && value.size() <= max; }
+
+    match /users/{userId} {
+      allow read: if signedIn() && (request.auth.uid == userId || isAdmin());
+      allow create: if signedIn() && request.auth.uid == userId
+        && request.resource.data.keys().hasOnly(['displayName','email','createdAt','bio'])
+        && validText(request.resource.data.displayName, 40);
+      allow update: if signedIn() && request.auth.uid == userId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName','bio','photoURL']);
+      allow delete: if isAdmin();
+    }
+
+    match /posts/{postId} {
+      allow read: if resource.data.status == 'published' || (signedIn() && resource.data.uid == request.auth.uid) || isAdmin();
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['uid','authorName','text','createdAt','status','reportCount'])
+        && request.resource.data.uid == request.auth.uid
+        && validText(request.resource.data.text, 1000)
+        && request.resource.data.status == 'published'
+        && request.resource.data.reportCount == 0;
+      allow update: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text'])
+        && validText(request.resource.data.text, 1000));
+      allow delete: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+    }
+
+    match /reports/{reportId} {
+      allow create: if signedIn()
+        && request.resource.data.reporterUid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['postId','reporterUid','reason','createdAt','status'])
+        && validText(request.resource.data.reason, 300)
+        && request.resource.data.status == 'open';
+      allow read, update, delete: if isAdmin();
+    }
+
+    match /chats/{chatId} {
+      allow read, create: if signedIn() && request.auth.uid in resource.data.participants;
+      allow update: if signedIn() && request.auth.uid in resource.data.participants;
+      match /messages/{messageId} {
+        allow read: if signedIn() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
+        allow create: if signedIn()
+          && request.resource.data.senderUid == request.auth.uid
+          && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants
+          && validText(request.resource.data.text, 2000);
+        allow update, delete: if false;
+      }
+    }
+
+    match /notifications/{notificationId} {
+      allow read, update: if signedIn() && resource.data.recipientUid == request.auth.uid;
+      allow create, delete: if isAdmin();
+    }
+  }
+}
