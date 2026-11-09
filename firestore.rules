@@ -4,6 +4,7 @@ service cloud.firestore {
     function signedIn() { return request.auth != null; }
     function isAdmin() { return signedIn() && request.auth.token.admin == true; }
     function validText(value, max) { return value is string && value.size() > 0 && value.size() <= max; }
+    function pairKey(a, b) { return a < b ? a + '_' + b : b + '_' + a; }
 
     match /users/{userId} {
       allow read: if signedIn() && (request.auth.uid == userId || isAdmin());
@@ -33,6 +34,7 @@ service cloud.firestore {
         && request.resource.data.recipientUid is string
         && request.resource.data.recipientUid != request.auth.uid
         && request.resource.data.status == 'pending'
+        && requestId == pairKey(request.resource.data.senderUid, request.resource.data.recipientUid)
         && request.resource.data.keys().hasOnly(['senderUid','senderName','recipientUid','recipientName','status','createdAt']);
       allow update: if signedIn()
         && resource.data.recipientUid == request.auth.uid
@@ -40,6 +42,24 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
         && request.resource.data.status in ['accepted','declined'];
       allow delete: if false;
+    }
+
+    match /friendships/{friendshipId} {
+      allow read: if signedIn() && request.auth.uid in resource.data.members;
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['senderUid','recipientUid','senderName','recipientName','members','createdAt'])
+        && request.resource.data.senderUid is string
+        && request.resource.data.recipientUid is string
+        && request.resource.data.senderUid != request.resource.data.recipientUid
+        && request.resource.data.members is list
+        && request.resource.data.members.size() == 2
+        && request.resource.data.members.hasAll([request.resource.data.senderUid, request.resource.data.recipientUid])
+        && request.auth.uid in request.resource.data.members
+        && friendshipId == pairKey(request.resource.data.senderUid, request.resource.data.recipientUid)
+        && getAfter(/databases/$(database)/documents/friendRequests/$(friendshipId)).data.status == 'accepted'
+        && getAfter(/databases/$(database)/documents/friendRequests/$(friendshipId)).data.senderUid == request.resource.data.senderUid
+        && getAfter(/databases/$(database)/documents/friendRequests/$(friendshipId)).data.recipientUid == request.resource.data.recipientUid;
+      allow update, delete: if false;
     }
 
     match /posts/{postId} {
@@ -90,21 +110,29 @@ service cloud.firestore {
     }
 
     match /chats/{chatId} {
-      allow read: if signedIn() && request.auth.uid in resource.data.participants;
+      allow read: if signedIn() && request.auth.uid in resource.data.participants
+        && exists(/databases/$(database)/documents/friendships/$(pairKey(resource.data.participants[0], resource.data.participants[1])));
+
       allow create: if signedIn()
         && request.auth.uid in request.resource.data.participants
         && request.resource.data.participants is list
         && request.resource.data.participants.size() == 2
         && request.resource.data.keys().hasOnly(['participants','createdAt','updatedAt'])
         && request.resource.data.participants.size() == 2
-        && request.resource.data.participants[0] != request.resource.data.participants[1];
+        && request.resource.data.participants[0] < request.resource.data.participants[1]
+        && chatId == pairKey(request.resource.data.participants[0], request.resource.data.participants[1])
+        && exists(/databases/$(database)/documents/friendships/$(pairKey(request.resource.data.participants[0], request.resource.data.participants[1])));
       allow update: if signedIn() && request.auth.uid in resource.data.participants
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessage','updatedAt']);
+        && exists(/databases/$(database)/documents/friendships/$(pairKey(resource.data.participants[0], resource.data.participants[1])))
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessage','updatedAt'])
+        && validText(request.resource.data.lastMessage, 120);
       match /messages/{messageId} {
-        allow read: if signedIn() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
+        allow read: if signedIn() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants
+          && exists(/databases/$(database)/documents/friendships/$(chatId));
         allow create: if signedIn()
           && request.resource.data.senderUid == request.auth.uid
           && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants
+          && exists(/databases/$(database)/documents/friendships/$(chatId))
           && request.resource.data.keys().hasOnly(['senderUid','text','createdAt'])
           && validText(request.resource.data.text, 2000);
         allow update, delete: if false;
