@@ -243,3 +243,16 @@ body.dark .empty-state{background:var(--surface)}
 @media(prefers-reduced-motion:reduce){
   *,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}
 }
+
+/* Community welcome panel */
+.community-intro{position:relative;display:flex;align-items:center;gap:15px;overflow:hidden;padding:20px 22px;background:linear-gradient(115deg,#eaf3ff 0%,#f8fbff 58%,#e5efff 100%);border:1px solid #dceaff;border-radius:16px}
+.intro-mark{width:48px;height:48px;flex:0 0 48px;border-radius:15px;display:grid;place-items:center;background:linear-gradient(145deg,#1877f2,#65a8ff);color:#fff;font-size:24px;font-weight:800;box-shadow:0 8px 20px #1877f233}
+.intro-copy{position:relative;z-index:1;min-width:0}
+.intro-copy .eyebrow{margin:0 0 5px}
+.intro-copy h1{font-size:clamp(17px,2.4vw,22px);letter-spacing:-.6px;line-height:1.3;margin:0;color:#17345a}
+.intro-copy p:last-child{font-size:12px;line-height:1.5;margin:5px 0 0;color:#526780}
+.intro-decoration{position:absolute;right:20px;top:-15px;font-size:90px;line-height:1;color:#1877f212;transform:rotate(15deg)}
+body.dark .community-intro{background:linear-gradient(115deg,#1e344e,#222b3b);border-color:#344b67}
+body.dark .intro-copy h1{color:#e6f1ff}
+body.dark .intro-copy p:last-child{color:#b7c8dc}
+@media(max-width:700px){.community-intro{padding:15px;gap:12px}.intro-mark{width:42px;height:42px;flex-basis:42px;border-radius:13px}.intro-decoration{right:8px;font-size:70px}}
