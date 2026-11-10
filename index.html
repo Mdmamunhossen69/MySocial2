@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#1877f2">
   <meta name="description" content="MySocial2 — একটি নিরাপদ ও সহজ সামাজিক যোগাযোগ প্ল্যাটফর্ম।">
-  <title>MySocial2 — Connect & Share</title>
+  <title>MySocial2</title>
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./assets/icon.svg">
   <link rel="stylesheet" href="./css/styles.css">
@@ -13,12 +13,12 @@
 <body>
   <header class="topbar">
     <div class="topbar-left">
-      <a class="brand" href="./" aria-label="MySocial2 home"><span class="brand-mark">M</span><span>MySocial<span class="brand-two">2</span></span></a>
-      <div class="global-search"><span aria-hidden="true">⌕</span><input id="memberSearch" type="search" maxlength="40" placeholder="MySocial2-তে খুঁজুন" aria-label="Search members"><button id="memberSearchBtn" type="button" aria-label="Search">⌕</button></div>
+      <a class="logo brand" href="./" aria-label="MySocial2 home">MySocial2</a>
+      <div class="search global-search"><span class="search-icon" aria-hidden="true">⌕</span><input id="memberSearch" type="search" maxlength="40" placeholder="MySocial2-তে খুঁজুন" aria-label="Search members"><button id="memberSearchBtn" type="button" aria-label="Search">⌕</button></div>
     </div>
-    <nav class="top-navigation" aria-label="Quick navigation">
-      <a class="top-nav-item active" href="#home" aria-label="Home"><span>⌂</span><small>হোম</small></a>
-      <a class="top-nav-item" href="#friends" aria-label="Friends"><span>♧</span><small>বন্ধু</small></a>
+    <nav class="topnav top-navigation" aria-label="Quick navigation">
+      <a class="navlink top-nav-item active" href="#home" aria-label="Home"><span>⌂</span><small>হোম</small></a>
+      <a class="navlink top-nav-item" href="#friends" aria-label="Friends"><span>♧</span><small>বন্ধু</small></a>
       <a class="top-nav-item" href="#messages" aria-label="Messages"><span>✉</span><small>মেসেজ</small></a>
       <a class="top-nav-item" href="#profile" aria-label="Profile"><span>◎</span><small>প্রোফাইল</small></a>
     </nav>
@@ -37,7 +37,7 @@
     <a href="#profile" class="mobile-nav-link"><span>◎</span><small>প্রোফাইল</small></a>
   </nav>
   <main class="layout">
-    <aside class="sidebar panel">
+    <aside class="left sidebar panel">
       <div class="user-mini" id="sidebarUser"><div class="avatar">M</div><div><strong>MySocial2</strong><small data-i18n="welcome">স্বাগতম</small></div></div>
       <nav class="nav-list" aria-label="Main navigation">
         <a class="nav-item active" href="#home">⌂ <span data-i18n="home">হোম</span></a>
@@ -52,7 +52,7 @@
       <div class="sidebar-note"><strong>MySocial2</strong><p data-i18n="sidebarNote">বন্ধুদের সঙ্গে যুক্ত থাকুন, নিরাপদে শেয়ার করুন।</p></div>
     </aside>
 
-    <section class="main-column" id="home">
+    <section class="main main-column" id="home">
       <section class="stories-panel panel" id="stories">
         <div class="section-heading"><div><p class="eyebrow">YOUR CIRCLE</p><h2>স্টোরিজ</h2></div><span class="status-pill">আপনার কমিউনিটি</span></div>
         <div class="story-row"><button type="button" class="story-tile create-story" id="createStoryBtn"><span class="story-plus">＋</span><strong>স্টোরি তৈরি</strong><small>২৪ ঘণ্টার জন্য টেক্সট শেয়ার</small></button><div id="storyFeed" class="story-feed"><p class="tiny muted">লগইন করলে বন্ধুদের স্টোরি দেখা যাবে।</p></div></div>
@@ -100,7 +100,7 @@
       <section class="panel secondary-section hidden" id="adminPanel"><div class="section-heading"><h2>Admin dashboard</h2><span class="status-pill">Admin only</span></div><p class="muted">রিপোর্ট পর্যালোচনা ও পোস্ট মডারেশন। এই অংশ শুধু Firebase admin custom claim থাকা অ্যাকাউন্ট দেখতে পারবে।</p><div id="adminSummary"></div><div id="adminReports" class="member-list"><p class="tiny muted">অ্যাডমিন হিসেবে লগইন করলে রিপোর্ট দেখা যাবে।</p></div></section>
     </section>
 
-    <aside class="right-column">
+    <aside class="right right-column">
       <section class="panel side-card contacts-card"><div class="side-title"><h3>পরিচিত মানুষ</h3><span class="online-dot"></span></div><p class="muted">বন্ধু হিসেবে যুক্ত হলে তাদের তালিকা এখানে দেখা যাবে।</p><a href="#friends" class="side-link">বন্ধুদের দেখুন →</a></section>
       <section class="panel side-card"><p class="eyebrow">COMMUNITY GUIDELINES</p><h3 data-i18n="safeSpace">নিরাপদ কমিউনিটি</h3><ul class="guideline-list"><li data-i18n="guideline1">সম্মানজনক ভাষা ব্যবহার করুন</li><li data-i18n="guideline2">ব্যক্তিগত তথ্য প্রকাশ করবেন না</li><li data-i18n="guideline3">সমস্যাজনক পোস্ট রিপোর্ট করুন</li></ul></section>
       <section class="panel side-card"><p class="eyebrow">ABOUT</p><h3>MySocial2</h3><p class="muted" data-i18n="aboutText">মানুষের সঙ্গে সংযোগ, গল্প ও ইতিবাচক কমিউনিটি।</p><span class="tiny muted">© 2026 MySocial2</span></section>
