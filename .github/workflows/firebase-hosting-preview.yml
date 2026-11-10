@@ -1,0 +1,58 @@
+name: Firebase Hosting Preview
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: firebase-hosting-preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  test-and-preview:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out pull request
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run JavaScript, configuration, and Hosting bundle tests
+        run: npm test
+
+      - name: Run Firestore Rules emulator tests
+        run: npm run test:rules
+
+      - name: Build allowlisted Hosting bundle
+        run: npm run build:hosting
+
+      - name: Verify Firebase Hosting credential exists
+        if: vars.FIREBASE_HOSTING_PREVIEW_ENABLED == 'true'
+        env:
+          FIREBASE_HOSTING_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_HOSTING_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$FIREBASE_HOSTING_SERVICE_ACCOUNT" ]; then
+            echo "::error::Missing repository Actions secret FIREBASE_HOSTING_SERVICE_ACCOUNT."
+            echo "Add the Firebase Hosting deployment service-account JSON as an encrypted repository secret."
+            exit 1
+          fi
+
+      - name: Deploy temporary Firebase Hosting preview
+        if: vars.FIREBASE_HOSTING_PREVIEW_ENABLED == 'true'
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_HOSTING_SERVICE_ACCOUNT }}
+          projectId: mysocial2-5c3c5
+          expires: 7d
