@@ -48,6 +48,7 @@ jobs:
           fi
 
       - name: Deploy temporary Firebase Hosting preview
+        if: vars.FIREBASE_HOSTING_PREVIEW_ENABLED == 'true'
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
