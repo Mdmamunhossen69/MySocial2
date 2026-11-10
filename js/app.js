@@ -1,6 +1,5 @@
 import { firebaseConfig, isFirebaseConfigured } from "./firebase-config.js";
 import { BOTS } from "./bots.js";
-import { imageHostConfig } from "./image-host-config.js";
 
 const $ = (id) => document.getElementById(id);
 const state = { mode: "login", user: null, db: null, auth: null, firebase: null, posts: [], lang: "bn", friendRequests: [], friends: [], chats: [], activeChatId: null, messageUnsubscribe: null, deferredInstall: null, adminReportsUnsubscribe: null, storiesUnsubscribe: null, groupsUnsubscribe: null, notificationUnsubscribe: null, groupMemberships: new Set() };
