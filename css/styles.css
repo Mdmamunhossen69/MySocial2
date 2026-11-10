@@ -179,3 +179,67 @@ body.dark .create-story{background:linear-gradient(155deg,#233d5c,#1e3149);color
 
 .notification-row.is-read{opacity:.68}
 .notification-row small,.group-row small{max-width:100%;overflow-wrap:anywhere}
+
+
+/* 2026 visual polish: premium, friendly, accessible social UI */
+:root{
+  --brand-blue:#1877f2;
+  --brand-blue-dark:#1264d8;
+  --brand-tint:#edf5ff;
+  --card-radius:16px;
+}
+body{font-family:'DM Sans','Hind Siliguri',system-ui,sans-serif;letter-spacing:-.08px}
+.topbar{backdrop-filter:saturate(160%) blur(14px);background:color-mix(in srgb,var(--surface) 94%,transparent)}
+.brand{transition:transform .18s ease}
+.brand:hover{transform:translateY(-1px)}
+.global-search{border:1px solid transparent;transition:border-color .18s,background .18s}
+.global-search:focus-within{border-color:#1877f255;background:var(--surface)}
+.panel{transition:box-shadow .2s ease,border-color .2s ease}
+.stories-panel,.auth-card,.composer,.bots-section,.secondary-section,.post-card,.side-card{border:1px solid color-mix(in srgb,var(--line) 78%,transparent);border-radius:var(--card-radius)}
+.section-heading{align-items:center}
+.section-heading h2,.feed-heading h2{letter-spacing:-.55px}
+.eyebrow{letter-spacing:1.25px}
+.primary-btn{box-shadow:0 3px 8px #1877f222;transition:transform .18s ease,box-shadow .18s ease,background .18s ease}
+.primary-btn:hover{box-shadow:0 6px 15px #1877f233}
+.icon-btn,.small-btn{transition:background .18s ease,transform .18s ease}
+.icon-btn:hover,.small-btn:hover{transform:translateY(-1px);background:var(--soft)}
+.nav-item{transition:background .18s ease,color .18s ease,transform .18s ease}
+.nav-item:active,.text-btn:active{transform:scale(.98)}
+.story-tile{position:relative;transition:transform .2s ease,box-shadow .2s ease}
+.story-tile:hover{transform:translateY(-3px);box-shadow:0 8px 20px #1c4c8515}
+.story-plus{box-shadow:0 4px 12px #1877f244}
+.post-card{overflow:hidden}
+.post-head .avatar{width:44px;height:44px;border:2px solid var(--surface);box-shadow:0 0 0 1px var(--line)}
+.post-content{line-height:1.75}
+.post-image{max-height:560px;object-fit:cover}
+.post-actions{gap:4px}
+.post-actions .text-btn{flex:1;border-radius:8px;padding:9px 5px}
+.post-actions .text-btn:hover{background:var(--soft)}
+.comment-form{gap:9px}
+.comment-input{background:var(--bg);border-color:transparent}
+.comment-input:focus{background:var(--surface)}
+.bot-card{background:linear-gradient(145deg,var(--surface),var(--bg));transition:transform .2s ease,border-color .2s ease}
+.bot-card:hover{transform:translateY(-2px);border-color:#1877f255}
+.ai-label{letter-spacing:.4px}
+.member-row,.chat-row{transition:border-color .18s ease,background .18s ease}
+.member-row:hover{border-color:#1877f255}
+.status-pill{letter-spacing:.15px}
+.empty-state{border:1px dashed var(--line);box-shadow:none}
+.form-message{overflow-wrap:anywhere}
+:focus-visible{outline:3px solid #1877f277;outline-offset:2px}
+body.dark .topbar{background:color-mix(in srgb,var(--surface) 94%,transparent)}
+body.dark .bot-card{background:linear-gradient(145deg,#292b2e,#222426)}
+body.dark .comment-input{background:#303236}
+body.dark .empty-state{background:var(--surface)}
+@media(max-width:700px){
+  .topbar{box-shadow:0 1px 5px rgba(0,0,0,.07)}
+  .layout{padding-left:7px;padding-right:7px}
+  .stories-panel,.auth-card,.composer,.bots-section,.secondary-section{border-radius:14px}
+  .story-tile{flex-basis:calc(50% - 5px);min-height:126px}
+  .post-card{border-radius:14px}
+  .post-actions .text-btn{font-size:12px}
+  .sidebar{box-shadow:0 -5px 18px rgba(0,0,0,.06)}
+}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}
+}
