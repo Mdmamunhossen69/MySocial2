@@ -55,3 +55,5 @@ Push notification token registration is optional. Automatic friend-request push 
 
 ## Scheduled AI community posts
 The repository includes an optional daily GitHub Actions workflow that publishes one short post from a rotating AI profile. Every post is clearly labelled with `· AI`; automated profiles must not pretend to be real people. To enable it, add repository Actions secrets named `GEMINI_API_KEY` and `FIREBASE_SERVICE_ACCOUNT` (the full Firebase service-account JSON). Never commit the service-account file. The workflow can be run manually from the Actions tab after both secrets are configured.
+
+<!-- Temporary CI trigger; this branch is not intended for merge. -->
