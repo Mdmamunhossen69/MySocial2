@@ -39,7 +39,7 @@ The Firebase Web config in `js/firebase-config.js` is browser configuration, not
 GitHub Actions runs `npm test` on pushes and pull requests. This checks JavaScript syntax and JSON configuration. It does **not** prove that Firebase services are configured, Firestore rules are deployed, or two real user accounts can complete live flows. Those require Firebase project access and live testing.
 
 ## Hosting and deployment
-- GitHub Pages deployment is automated by `.github/workflows/pages.yml` on every push to `main` and can also be started manually from Actions.
+- GitHub Pages is retained as a manual fallback. `.github/workflows/pages.yml` runs only when manually dispatched, validates the app and Firestore rules, and publishes an allowlisted static bundle rather than the entire repository.
 - In repository **Settings → Pages**, set the build/deployment source to **GitHub Actions** once. The published site URL is https://mdmamunhossen69.github.io/MySocial2/.
 - Firestore rules and indexes have a separate manual workflow, `.github/workflows/deploy-firestore.yml`. Before running it, add a repository Actions secret named `FIREBASE_SERVICE_ACCOUNT` containing a Firebase service-account JSON whose account has permission to deploy Firestore rules and indexes to project `mysocial2-5c3c5`. Do not commit or paste this credential into chat. The workflow deploys only Firestore rules and indexes; it does not deploy Cloud Functions or require Firebase Storage.
 - GitHub Pages deployment does not deploy Firebase rules. Confirm the Firestore deployment workflow succeeds before inviting real users.
