@@ -29,7 +29,7 @@ A mobile-first Bengali/English community app built with HTML, CSS, JavaScript mo
    `firebase login`
    `firebase use mysocial2-5c3c5`
    `firebase deploy --only firestore:rules,firestore:indexes`
-5. Push notifications that depend on Cloud Functions are optional and are not enabled in the free-only setup; deploying those functions requires Blaze billing.
+5. Push notifications that depend on Cloud Functions are optional and are not enabled in the free-only setup; deploying those functions requires Blaze billing. The repository retains the Cloud Functions configuration and targets the supported Node.js 22 runtime.
 6. Set the admin user's Firebase Authentication custom claim to `admin: true` using the included trusted Admin SDK helper. Never expose Admin SDK credentials in browser code or this public repository.
 
 The Firebase Web config in `js/firebase-config.js` is browser configuration, not a service-account secret. HTTPS image URLs work without Firebase Storage. Direct browser file uploads are disabled by default because an unsigned Cloudinary preset is public and can be abused; browser-side file-size checks are bypassable and are not a security boundary. The app configuration leaves the Cloudinary cloud name and preset empty, and file inputs are disabled. Before any future re-enable, delete or disable the previously created unsigned preset in Cloudinary and implement a trusted server-side signed-upload endpoint with server-enforced file type and size limits. Never put a Cloudinary API secret in browser code. Configure Firebase App Check and review the Firestore rules before opening the app to a wider audience.
