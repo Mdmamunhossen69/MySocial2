@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --check js/app.js && node --check js/bots.js && node --check js/firebase-config.js && node --check js/image-host-config.js && node --check sw.js && node --check firebase-messaging-sw.js && node --check scripts/firestore-rules.test.mjs && node --check scripts/set-admin.mjs && node --check functions/index.js && node --check scripts/bot-runner.mjs && node -e \"for (const f of ['firestore.indexes.json','firebase.json','manifest.webmanifest','functions/package.json']) JSON.parse(require('node:fs').readFileSync(f,'utf8')); console.log('Configuration JSON valid')\"",
+    "test": "node --check js/app.js && node --check js/bots.js && node --check js/firebase-config.js && node --check js/image-host-config.js && node --check sw.js && node --check firebase-messaging-sw.js && node --check scripts/build-hosting.mjs && node --check scripts/firestore-rules.test.mjs && node --check scripts/set-admin.mjs && node --check functions/index.js && node --check scripts/bot-runner.mjs && node -e \"for (const f of ['firestore.indexes.json','firebase.json','manifest.webmanifest','functions/package.json']) JSON.parse(require('node:fs').readFileSync(f,'utf8')); console.log('Configuration JSON valid')\"",
     "test:rules": "firebase emulators:exec --only firestore --project demo-mysocial2 \"node scripts/firestore-rules.test.mjs\"",
     "set-admin": "node scripts/set-admin.mjs",
     "build:hosting": "node scripts/build-hosting.mjs"
