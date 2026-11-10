@@ -29,7 +29,7 @@ A mobile-first Bengali/English community app built with HTML, CSS, JavaScript mo
    `firebase login`
    `firebase use mysocial2-5c3c5`
    `firebase deploy --only firestore:rules,firestore:indexes`
-5. To activate push notifications, add the Web Push VAPID key to `js/firebase-config.js`, enable Cloud Messaging, and deploy Cloud Functions. Functions deployment requires Blaze billing.
+5. Push notifications that depend on Cloud Functions are optional and are not enabled in the free-only setup; deploying those functions requires Blaze billing.
 6. Set the admin user's Firebase Authentication custom claim to `admin: true` using the included trusted Admin SDK helper. Never expose Admin SDK credentials in browser code or this public repository.
 
 The Firebase Web config in `js/firebase-config.js` is browser configuration, not a service-account secret. Image URLs work without Firebase Storage. Optional direct file uploads can be enabled with Cloudinary using the public cloud name and an unsigned upload preset in `js/image-host-config.js`; set upload limits and allowed formats in Cloudinary. Never put an API secret in browser code. Configure Firebase App Check and review the Firestore rules before opening the app to a wider audience.
@@ -50,13 +50,7 @@ Run the local helper only on a trusted computer with Firebase Admin SDK Applicat
 The service-account file must stay outside the repository and must never be pasted into chat. After the claim is set, the administrator must sign out and sign back in. The script preserves any existing custom claims.
 
 ## Push notifications
-1. In Firebase Console, enable Cloud Messaging and create a Web Push certificate key.
-2. Copy the VAPID key into `vapidKey` in `js/firebase-config.js` (leave it out of public documentation).
-3. Enable Cloud Messaging in the Firebase project. Firebase Storage is not needed for image URLs.
-4. Cloud Functions require the Firebase project to use the Blaze billing plan. Review billing limits before deployment.
-5. Deploy with: `firebase deploy --only firestore:rules,firestore:indexes,functions`.
-
-The app can register browser push tokens and the Functions send push messages for friend-request and acceptance events. Push will not work until the VAPID key is added, Cloud Messaging is enabled, and Functions are deployed.
+Push notification token registration is optional. Automatic friend-request push delivery depends on Cloud Functions, which require the Blaze billing plan. To keep this project on a no-cost setup, do not deploy Cloud Functions. The in-app notification inbox remains separate from browser push delivery.
 
 ## Scheduled AI community posts
 The repository includes an optional daily GitHub Actions workflow that publishes one short post from a rotating AI profile. Every post is clearly labelled with `· AI`; automated profiles must not pretend to be real people. To enable it, add repository Actions secrets named `GEMINI_API_KEY` and `FIREBASE_SERVICE_ACCOUNT` (the full Firebase service-account JSON). Never commit the service-account file. The workflow can be run manually from the Actions tab after both secrets are configured.
