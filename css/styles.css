@@ -291,3 +291,34 @@ body.signed-out.dark .auth-tabs .tab.active{background:#2b3544}
  body.signed-out .intro-copy p:last-child{font-size:13px}
  body.signed-out .auth-card{grid-column:1;grid-row:2;max-width:440px;justify-self:center;padding:20px}
 }
+
+
+/* MySocial2 streamlined navigation and editable member profile */
+.community-intro,.right-column,#aiCorner,#groups{display:none!important}
+.mobile-bottom-nav{display:none}
+.profile-section{scroll-margin-top:80px}
+.profile-summary{margin:14px 0}
+.profile-hero{display:flex;align-items:center;gap:14px}
+.profile-avatar{width:88px;height:88px;flex:0 0 88px;object-fit:cover;border-radius:50%;border:3px solid var(--surface);box-shadow:0 0 0 1px var(--line)}
+.profile-avatar-fallback{display:grid;place-items:center;background:var(--soft);color:var(--primary);font-size:32px;font-weight:800}
+.profile-identity{min-width:0}
+.profile-identity h3{font-size:20px;margin:0 0 4px}
+.profile-identity p,.profile-bio{font-size:13px;color:var(--muted);overflow-wrap:anywhere}
+.profile-bio{margin:14px 0 4px;line-height:1.6}
+.profile-edit-form{display:grid;gap:12px;margin:16px 0}
+.profile-edit-form label{display:grid;gap:6px;font-size:13px;font-weight:700}
+.profile-edit-form input:not([type=file]),.profile-edit-form textarea{width:100%;padding:11px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--text);font:inherit}
+.profile-photo-label input{font-size:12px}
+.profile-edit-actions{display:flex;gap:8px;align-items:center}
+.profile-edit-actions .small-btn{border-radius:8px;padding:10px 14px}
+@media(max-width:700px){
+  body{padding-bottom:calc(68px + env(safe-area-inset-bottom))}
+  .sidebar{display:none!important}
+  .mobile-bottom-nav{position:fixed;display:flex;left:0;right:0;bottom:0;z-index:60;justify-content:space-around;align-items:center;min-height:58px;padding:5px 4px calc(5px + env(safe-area-inset-bottom));background:var(--surface);border-top:1px solid var(--line);box-shadow:0 -3px 14px rgba(0,0,0,.08)}
+  .mobile-nav-link{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:0;padding:4px 1px;color:var(--muted);text-decoration:none;border-radius:8px}
+  .mobile-nav-link span{font-size:21px;line-height:1.1}
+  .mobile-nav-link small{font-size:10px;font-weight:700}
+  .mobile-nav-link.active,.mobile-nav-link:focus-visible{color:var(--primary);background:var(--soft)}
+  .layout{padding-bottom:8px}
+  .profile-avatar{width:76px;height:76px;flex-basis:76px}
+}
