@@ -1,0 +1,52 @@
+name: Deploy MySocial2 Production
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mysocial2-production-deploy
+  cancel-in-progress: false
+
+jobs:
+  validate-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Validate application and production Hosting bundle
+        run: npm test
+
+      - name: Test Firestore Security Rules
+        run: npm run test:rules
+
+      - name: Verify production Hosting credential exists
+        env:
+          FIREBASE_PRODUCTION_HOSTING_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_PRODUCTION_HOSTING_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$FIREBASE_PRODUCTION_HOSTING_SERVICE_ACCOUNT" ]; then
+            echo "::error::Missing repository Actions secret FIREBASE_PRODUCTION_HOSTING_SERVICE_ACCOUNT."
+            echo "Add the production Firebase Hosting service-account JSON as an encrypted repository secret."
+            exit 1
+          fi
+
+      - name: Deploy to production Firebase Hosting
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          firebaseServiceAccount: ${{ secrets.FIREBASE_PRODUCTION_HOSTING_SERVICE_ACCOUNT }}
+          projectId: mysocial2-5c3c5
+          channelId: live
