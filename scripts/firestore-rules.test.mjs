@@ -36,6 +36,26 @@ try {
     photoURL: ""
   }));
 
+  const declinedRequestId = "bob_charlie";
+  await assertSucceeds(setDoc(doc(bob, "friendRequests", declinedRequestId), {
+    senderUid: "bob", senderName: "Bob", recipientUid: "charlie",
+    recipientName: "Charlie", status: "pending", createdAt: serverTimestamp()
+  }));
+  await assertSucceeds(updateDoc(doc(charlie, "friendRequests", declinedRequestId), {
+    status: "declined"
+  }));
+  await assertSucceeds(updateDoc(doc(bob, "friendRequests", declinedRequestId), {
+    senderUid: "bob", senderName: "Bob", recipientUid: "charlie",
+    recipientName: "Charlie", status: "pending", createdAt: serverTimestamp()
+  }));
+  await assertSucceeds(updateDoc(doc(charlie, "friendRequests", declinedRequestId), {
+    status: "declined"
+  }));
+  await assertSucceeds(updateDoc(doc(charlie, "friendRequests", declinedRequestId), {
+    senderUid: "charlie", senderName: "Charlie", recipientUid: "bob",
+    recipientName: "Bob", status: "pending", createdAt: serverTimestamp()
+  }));
+
   const requestId = "alice_bob";
   await assertSucceeds(setDoc(doc(alice, "friendRequests", requestId), {
     senderUid: "alice", senderName: "Alice", recipientUid: "bob",
