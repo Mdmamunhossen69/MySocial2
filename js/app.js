@@ -120,11 +120,11 @@ async function saveProfile(event){
   if(imageUrlInput&&!validImageUrl(imageUrlInput)){toast("ছবির URL অবশ্যই HTTPS হতে হবে");return}
   const button=$("profileEditForm").querySelector('button[type="submit"]');button.disabled=true;
   try{
-    let photoURL=validImageUrl(imageUrlInput)||state.user.photoURL||"";
+    let photoURL=imageUrlInput?validImageUrl(imageUrlInput):"";
     if(file)photoURL=await uploadImageToCloudinary(file,"mysocial2/avatars");
     await state.firebase.updateProfile(state.auth.currentUser,{displayName:name,photoURL:photoURL||null});
     await state.firebase.updateDoc(state.firebase.doc(state.db,"users",state.user.uid),{displayName:name,bio,photoURL});
-    await state.firebase.updateDoc(state.firebase.doc(state.db,"publicProfiles",state.user.uid),{displayName:name,bio,photoURL});
+    await state.firebase.setDoc(state.firebase.doc(state.db,"publicProfiles",state.user.uid),{displayName:name,bio,photoURL},{merge:true});
     state.user={...state.user,displayName:name,bio,photoURL};
     renderProfile();$("profileEditForm").classList.add("hidden");$("profilePhotoInput").value="";
     $("sidebarUser").innerHTML=(photoURL?'<img class="avatar" src="'+escapeHtml(photoURL)+'" alt="">':'<div class="avatar">'+escapeHtml(name.slice(0,1).toUpperCase())+'</div>')+'<div><strong>'+escapeHtml(name)+'</strong><small>'+escapeHtml(state.user.email||"")+'</small></div>';
