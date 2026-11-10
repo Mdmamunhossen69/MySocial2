@@ -109,13 +109,8 @@ async function renderProfile(){
   summary.innerHTML='<div class="profile-hero">'+(photo?'<img class="profile-avatar" src="'+escapeHtml(photo)+'" alt="প্রোফাইল ছবি">':'<div class="profile-avatar profile-avatar-fallback">'+escapeHtml(name.slice(0,1).toUpperCase())+'</div>')+'<div class="profile-identity"><h3>'+escapeHtml(name)+'</h3><p>'+escapeHtml(state.user.email||"")+'</p></div></div><p class="profile-bio">'+(bio?escapeHtml(bio):'এখনো কোনো পরিচিতি যোগ করা হয়নি।')+'</p>';
   $("profileNameInput").value=name;$("profileBioInput").value=bio;$("profilePhotoUrlInput").value=photo;
 }
-async function uploadImageToCloudinary(file,folder){
- const cloudName=imageHostConfig.cloudName,uploadPreset=imageHostConfig.uploadPreset;
- if(!cloudName||!uploadPreset)throw new Error("Cloudinary is not configured. Use an HTTPS image URL or configure the free image host.");
- const body=new FormData();body.append("file",file);body.append("upload_preset",uploadPreset);body.append("folder",folder);
- const endpoint="https://api.cloudinary.com/v1_1/"+encodeURIComponent(cloudName)+"/image/upload";
- const response=await fetch(endpoint,{method:"POST",body}),result=await response.json();
- if(!response.ok||!result.secure_url)throw new Error(result.error?.message||"Image upload failed");return result.secure_url;
+async function uploadImageToCloudinary(){
+ throw new Error("নিরাপত্তার কারণে সরাসরি ফাইল আপলোড বন্ধ। HTTPS ছবির URL ব্যবহার করুন।");
 }
 function validImageUrl(value){if(!value)return "";try{const u=new URL(value);return u.protocol==="https:"?u.href:""}catch{return ""}}
 async function saveProfile(event){
