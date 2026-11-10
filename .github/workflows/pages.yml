@@ -1,0 +1,51 @@
+name: Publish MySocial2 to GitHub Pages (manual)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install
+      - name: Run JavaScript and configuration tests
+        run: npm test
+      - name: Run Firestore Rules emulator tests
+        run: npm run test:rules
+      - name: Assemble allowlisted static site
+        run: |
+          mkdir -p dist/css dist/js dist/assets
+          cp index.html manifest.webmanifest sw.js firebase-messaging-sw.js dist/
+          cp css/styles.css dist/css/
+          cp js/app.js js/firebase-config.js js/image-host-config.js js/bots.js dist/js/
+          cp assets/icon.svg dist/assets/
+      - name: Upload static site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

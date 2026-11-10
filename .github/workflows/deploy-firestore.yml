@@ -1,0 +1,35 @@
+name: Deploy Firestore Rules and Indexes
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check deployment credential
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "Missing repository Actions secret: FIREBASE_SERVICE_ACCOUNT"
+            echo "Add a Firebase service-account JSON with Firestore deployment permissions, then rerun this workflow."
+            exit 1
+          fi
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Firebase CLI
+        run: npm install --global firebase-tools
+      - name: Authenticate to Firebase
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+      - name: Deploy Firestore rules and indexes
+        run: firebase deploy --only firestore:rules,firestore:indexes --project mysocial2-5c3c5
