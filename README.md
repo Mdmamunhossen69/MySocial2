@@ -13,6 +13,7 @@ A mobile-first Bengali/English community app built with HTML, CSS, JavaScript mo
 - Like/unlike posts and add/read recent comments
 - Report posts; trusted admins can review reports, resolve them, or remove reported posts
 - Search member profiles, send/accept/decline friend requests
+- Firestore rules bind displayed author/member names to their public profile and prevent profile-name spoofing
 - Private text chat between accepted friends in the normal UI flow
 - AI helper directory; all automated profiles are clearly labelled as AI
 
