@@ -96,10 +96,14 @@ async function joinGroup(id){
 }
 function escapeHtml(value=""){return String(value).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function setAuthMode(mode){state.mode=mode;const registering=mode==="register";$("loginTab").classList.toggle("active",!registering);$("registerTab").classList.toggle("active",registering);$("nameField").classList.toggle("hidden",!registering);$("authSubmit").textContent=registering?copy[state.lang].register:copy[state.lang].login;$("passwordInput").autocomplete=registering?"new-password":"current-password"}
-function renderProfile(){
+async function renderProfile(){
   const summary=$("profileSummary"),form=$("profileEditForm"),edit=$("editProfileBtn");
   if(!state.user){summary.innerHTML='<p class="muted">প্রোফাইল দেখতে লগইন করুন।</p>';form.classList.add("hidden");edit.hidden=true;return}
   edit.hidden=false;
+  try{
+    const profileSnap=await state.firebase.getDoc(state.firebase.doc(state.db,"publicProfiles",state.user.uid));
+    if(profileSnap.exists()){const profile=profileSnap.data();state.user={...state.user,displayName:profile.displayName||state.user.displayName,bio:profile.bio||"",photoURL:profile.photoURL||state.user.photoURL||""};}
+  }catch(error){console.warn("Profile details could not be loaded",error)}
   const name=state.user.displayName||"MySocial member",bio=state.user.bio||"",photo=state.user.photoURL||"";
   summary.innerHTML='<div class="profile-hero">'+(photo?'<img class="profile-avatar" src="'+escapeHtml(photo)+'" alt="প্রোফাইল ছবি">':'<div class="profile-avatar profile-avatar-fallback">'+escapeHtml(name.slice(0,1).toUpperCase())+'</div>')+'<div class="profile-identity"><h3>'+escapeHtml(name)+'</h3><p>'+escapeHtml(state.user.email||"")+'</p></div></div><p class="profile-bio">'+(bio?escapeHtml(bio):'এখনো কোনো পরিচিতি যোগ করা হয়নি।')+'</p>';
   $("profileNameInput").value=name;$("profileBioInput").value=bio;
