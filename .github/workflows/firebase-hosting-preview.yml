@@ -39,10 +39,10 @@ jobs:
 
       - name: Verify Firebase Hosting credential exists
         env:
-          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          FIREBASE_HOSTING_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_HOSTING_SERVICE_ACCOUNT }}
         run: |
-          if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
-            echo "::error::Missing repository Actions secret FIREBASE_SERVICE_ACCOUNT."
+          if [ -z "$FIREBASE_HOSTING_SERVICE_ACCOUNT" ]; then
+            echo "::error::Missing repository Actions secret FIREBASE_HOSTING_SERVICE_ACCOUNT."
             echo "Add the Firebase Hosting deployment service-account JSON as an encrypted repository secret."
             exit 1
           fi
@@ -51,6 +51,6 @@ jobs:
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_HOSTING_SERVICE_ACCOUNT }}
           projectId: mysocial2-5c3c5
           expires: 7d
