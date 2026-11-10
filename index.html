@@ -29,6 +29,13 @@
     </div>
   </header>
 
+  <nav class="mobile-bottom-nav" aria-label="প্রধান নেভিগেশন">
+    <a href="#home" class="mobile-nav-link active"><span>⌂</span><small>হোম</small></a>
+    <a href="#friends" class="mobile-nav-link"><span>♧</span><small>বন্ধু</small></a>
+    <a href="#messages" class="mobile-nav-link"><span>✉</span><small>মেসেজ</small></a>
+    <a href="#notifications" class="mobile-nav-link"><span>♢</span><small>নোটিফিকেশন</small></a>
+    <a href="#profile" class="mobile-nav-link"><span>◎</span><small>প্রোফাইল</small></a>
+  </nav>
   <main class="layout">
     <aside class="sidebar panel">
       <div class="user-mini" id="sidebarUser"><div class="avatar">M</div><div><strong>MySocial2</strong><small data-i18n="welcome">স্বাগতম</small></div></div>
@@ -51,7 +58,7 @@
         <div class="story-row"><button type="button" class="story-tile create-story" id="createStoryBtn"><span class="story-plus">＋</span><strong>স্টোরি তৈরি</strong><small>২৪ ঘণ্টার জন্য টেক্সট শেয়ার</small></button><div id="storyFeed" class="story-feed"><p class="tiny muted">লগইন করলে বন্ধুদের স্টোরি দেখা যাবে।</p></div></div>
       </section>
 
-      <section class="community-intro panel" aria-label="MySocial2 community introduction"><div class="intro-mark">M</div><div class="intro-copy"><p class="eyebrow">WELCOME TO YOUR COMMUNITY</p><h1>একসাথে থাকুন, মুহূর্ত ভাগ করে নিন</h1><p>বন্ধু খুঁজুন, নতুন গল্প দেখুন এবং নিজের কমিউনিটিতে যুক্ত থাকুন।</p></div><div class="intro-decoration" aria-hidden="true">✦</div></section>
+      <section class="community-intro panel hidden" aria-label="MySocial2 community introduction"><div class="intro-mark">M</div><div class="intro-copy"><p class="eyebrow">WELCOME TO YOUR COMMUNITY</p><h1>একসাথে থাকুন, মুহূর্ত ভাগ করে নিন</h1><p>বন্ধু খুঁজুন, নতুন গল্প দেখুন এবং নিজের কমিউনিটিতে যুক্ত থাকুন।</p></div><div class="intro-decoration" aria-hidden="true">✦</div></section>
 
       <section class="auth-card panel" id="authPanel">
         <div class="section-heading"><div><p class="eyebrow">ACCOUNT</p><h2 data-i18n="accountTitle">শুরু করুন</h2></div><span class="status-pill" id="connectionStatus">Demo preview</span></div>
@@ -78,7 +85,18 @@
       <section class="panel secondary-section" id="groups"><div class="section-heading"><h2>কমিউনিটি গ্রুপ</h2><span class="status-pill">Public groups</span></div><form id="groupForm" class="group-form"><input id="groupName" maxlength="40" placeholder="গ্রুপের নাম" required><input id="groupDescription" maxlength="160" placeholder="গ্রুপের পরিচিতি"><button class="primary-btn" type="submit">গ্রুপ তৈরি</button></form><div id="groupList" class="member-list"><p class="tiny muted">লগইন করলে পাবলিক গ্রুপ দেখতে পারবেন।</p></div></section>
       <section class="panel secondary-section" id="messages"><div class="section-heading"><h2 data-i18n="messages">মেসেজ</h2><span class="status-pill">Private chat</span></div><div class="chat-layout"><div id="chatList" class="chat-list"><p class="tiny muted">বন্ধুদের সঙ্গে চ্যাট শুরু করুন।</p></div><div class="chat-window"><h3 id="activeChatTitle">একটি কথোপকথন বেছে নিন</h3><div id="messageList" class="message-list"><p class="tiny muted">বন্ধু তালিকা থেকে Message চাপুন।</p></div><form id="chatForm" class="chat-composer hidden"><input id="messageText" maxlength="2000" placeholder="একটি মেসেজ লিখুন…" required><button class="primary-btn" type="submit">পাঠান</button></form></div></div></section>
       <section class="panel secondary-section" id="notifications"><div class="section-heading"><h2 data-i18n="notifications">নোটিফিকেশন</h2><button class="small-btn" id="enablePushBtn" type="button">Push চালু করুন</button></div><p class="tiny muted">Friend request ও acceptance-এর নোটিফিকেশন এখানে আসবে। Push-এর জন্য Firebase VAPID key লাগবে।</p><div id="notificationList" class="member-list"><p class="tiny muted">লগইন করলে নোটিফিকেশন দেখা যাবে।</p></div></section>
-      <section class="panel secondary-section" id="profile"><h2 data-i18n="profile">প্রোফাইল</h2><div id="profileSummary" class="muted">লগইন করলে আপনার প্রোফাইল এখানে দেখা যাবে।</div></section>
+      <section class="panel secondary-section profile-section" id="profile">
+        <div class="section-heading"><h2 data-i18n="profile">প্রোফাইল</h2><span class="status-pill">আপনার অ্যাকাউন্ট</span></div>
+        <div id="profileSummary" class="profile-summary"><p class="muted">লগইন করলে আপনার প্রোফাইল এখানে দেখা যাবে।</p></div>
+        <form id="profileEditForm" class="profile-edit-form hidden">
+          <label>প্রোফাইলের নাম<input id="profileNameInput" type="text" maxlength="40" required></label>
+          <label>নিজের সম্পর্কে লিখুন<textarea id="profileBioInput" rows="3" maxlength="160" placeholder="আপনার সম্পর্কে সংক্ষেপে লিখুন (সর্বোচ্চ ১৬০ অক্ষর)"></textarea></label>
+          <label class="profile-photo-label">প্রোফাইল ছবি<input id="profilePhotoInput" type="file" accept="image/jpeg,image/png,image/webp"></label>
+          <div class="profile-edit-actions"><button class="primary-btn" type="submit">পরিবর্তন সংরক্ষণ</button><button class="small-btn" id="cancelProfileEdit" type="button">বাতিল</button></div>
+          <p class="tiny muted" id="profileMessage">ছবি সর্বোচ্চ ২ MB; JPG, PNG বা WEBP।</p>
+        </form>
+        <button class="small-btn" id="editProfileBtn" type="button" hidden>প্রোফাইল এডিট করুন</button>
+      </section>
       <section class="panel secondary-section hidden" id="adminPanel"><div class="section-heading"><h2>Admin dashboard</h2><span class="status-pill">Admin only</span></div><p class="muted">রিপোর্ট পর্যালোচনা ও পোস্ট মডারেশন। এই অংশ শুধু Firebase admin custom claim থাকা অ্যাকাউন্ট দেখতে পারবে।</p><div id="adminSummary"></div><div id="adminReports" class="member-list"><p class="tiny muted">অ্যাডমিন হিসেবে লগইন করলে রিপোর্ট দেখা যাবে।</p></div></section>
     </section>
 
