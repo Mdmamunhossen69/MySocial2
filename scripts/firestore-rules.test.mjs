@@ -72,8 +72,12 @@ try {
   await assertSucceeds(setDoc(doc(alice, "posts", "image-only-post"), {
     uid: "alice", authorName: "Alice", text: "", createdAt: serverTimestamp(),
     status: "published", reportCount: 0, likedBy: [],
-    imageUrl: "https://firebasestorage.googleapis.com/v0/b/demo/o/image",
-    imagePath: "post-images/alice/image.png"
+    imageUrl: "https://images.example.com/photo.jpg"
+  }));
+  await assertFails(setDoc(doc(alice, "posts", "insecure-image-url"), {
+    uid: "alice", authorName: "Alice", text: "", createdAt: serverTimestamp(),
+    status: "published", reportCount: 0, likedBy: [],
+    imageUrl: "http://images.example.com/photo.jpg"
   }));
 
   await assertSucceeds(setDoc(doc(bob, "users", "bob", "fcmTokens", "token-1"), {
