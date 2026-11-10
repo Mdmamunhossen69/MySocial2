@@ -9,15 +9,16 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    env:
-      FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
     steps:
       - name: Check deployment credential
-        if: ${{ env.FIREBASE_SERVICE_ACCOUNT == '' }}
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: |
-          echo "Missing repository Actions secret: FIREBASE_SERVICE_ACCOUNT"
-          echo "Add a Firebase service-account JSON with Firestore deployment permissions, then rerun this workflow."
-          exit 1
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "Missing repository Actions secret: FIREBASE_SERVICE_ACCOUNT"
+            echo "Add a Firebase service-account JSON with Firestore deployment permissions, then rerun this workflow."
+            exit 1
+          fi
       - name: Check out repository
         uses: actions/checkout@v4
       - name: Set up Node.js
