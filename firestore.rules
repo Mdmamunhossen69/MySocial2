@@ -115,21 +115,18 @@ service cloud.firestore {
     match /posts/{postId} {
       allow read: if resource.data.status == 'published' || (signedIn() && resource.data.uid == request.auth.uid) || isAdmin();
       allow create: if signedIn()
-        && request.resource.data.keys().hasOnly(['uid','authorName','text','createdAt','status','reportCount','likedBy','imageUrl','imagePath'])
+        && request.resource.data.keys().hasOnly(['uid','authorName','text','createdAt','status','reportCount','likedBy','imageUrl'])
         && request.resource.data.uid == request.auth.uid
         && (validText(request.resource.data.text, 1000)
-          || ('imagePath' in request.resource.data && request.resource.data.text is string && request.resource.data.text.size() == 0))
+          || ('imageUrl' in request.resource.data && request.resource.data.text is string && request.resource.data.text.size() == 0))
         && request.resource.data.status == 'published'
         && request.resource.data.reportCount == 0
         && request.resource.data.likedBy is list
         && request.resource.data.likedBy.size() == 0
-        && ((('imagePath' in request.resource.data) && ('imageUrl' in request.resource.data)
-          && request.resource.data.imagePath is string
-          && request.resource.data.imagePath.matches('post-images/' + request.auth.uid + '/.*')
-          && request.resource.data.imageUrl is string
-          && request.resource.data.imageUrl.size() <= 2000
-          && request.resource.data.imageUrl.matches('https://firebasestorage.googleapis.com/.*'))
-          || (!('imagePath' in request.resource.data) && !('imageUrl' in request.resource.data)));
+        && ((!('imageUrl' in request.resource.data))
+          || (request.resource.data.imageUrl is string
+            && request.resource.data.imageUrl.size() <= 2000
+            && request.resource.data.imageUrl.matches('https://.*')));
       allow update: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text'])
         && validText(request.resource.data.text, 1000))
