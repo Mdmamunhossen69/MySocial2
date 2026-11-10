@@ -1,8 +1,6 @@
-name: Deploy MySocial2 to GitHub Pages
+name: Publish MySocial2 to GitHub Pages (manual)
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -20,10 +18,27 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install
+      - name: Run JavaScript and configuration tests
+        run: npm test
+      - name: Run Firestore Rules emulator tests
+        run: npm run test:rules
+      - name: Assemble allowlisted static site
+        run: |
+          mkdir -p dist/css dist/js dist/assets
+          cp index.html manifest.webmanifest sw.js firebase-messaging-sw.js dist/
+          cp css/styles.css dist/css/
+          cp js/app.js js/firebase-config.js js/image-host-config.js js/bots.js dist/js/
+          cp assets/icon.svg dist/assets/
       - name: Upload static site
         uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: dist
   deploy:
     environment:
       name: github-pages
