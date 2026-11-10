@@ -133,8 +133,8 @@ try {
   await assertSucceeds(setDoc(doc(alice, "groups", "public-group", "members", "alice"), {
     uid: "alice", displayName: "Alice", joinedAt: serverTimestamp()
   }));
-  await assertFails(setDoc(doc(alice, "groups", "public-group", "members", "alice-spoof"), {
-    uid: "alice", displayName: "Bob", joinedAt: serverTimestamp()
+  await assertFails(setDoc(doc(bob, "groups", "public-group", "members", "bob"), {
+    uid: "bob", displayName: "Alice", joinedAt: serverTimestamp()
   }));
   await assertSucceeds(setDoc(doc(bob, "groups", "public-group", "members", "bob"), {
     uid: "bob", displayName: "Bob", joinedAt: serverTimestamp()
