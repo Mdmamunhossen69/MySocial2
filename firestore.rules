@@ -4,15 +4,27 @@ service cloud.firestore {
     function signedIn() { return request.auth != null; }
     function isAdmin() { return signedIn() && request.auth.token.admin == true; }
     function validText(value, max) { return value is string && value.size() > 0 && value.size() <= max; }
+    function validOptionalHttpsUrl(value, max) { return value is string && value.size() <= max && (value == '' || value.matches('https://.*')); }
     function pairKey(a, b) { return a < b ? a + '_' + b : b + '_' + a; }
+    function profileNameMatches(userId, name) {
+      return exists(/databases/$(database)/documents/publicProfiles/$(userId))
+        && get(/databases/$(database)/documents/publicProfiles/$(userId)).data.displayName == name;
+    }
 
     match /users/{userId} {
       allow read: if signedIn() && (request.auth.uid == userId || isAdmin());
       allow create: if signedIn() && request.auth.uid == userId
         && request.resource.data.keys().hasOnly(['displayName','email','createdAt','bio'])
-        && validText(request.resource.data.displayName, 40);
+        && validText(request.resource.data.displayName, 40)
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.bio is string
+        && request.resource.data.bio.size() <= 160;
       allow update: if signedIn() && request.auth.uid == userId
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName','bio','photoURL']);
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName','bio','photoURL'])
+        && (!('displayName' in request.resource.data) || validText(request.resource.data.displayName, 40))
+        && (!('bio' in request.resource.data) || (request.resource.data.bio is string && request.resource.data.bio.size() <= 160))
+        && (!('photoURL' in request.resource.data) || validOptionalHttpsUrl(request.resource.data.photoURL, 2000));
       allow delete: if isAdmin();
     }
 
@@ -29,12 +41,12 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(['displayName','bio','photoURL','createdAt'])
         && validText(request.resource.data.displayName, 40)
         && (!('bio' in request.resource.data) || (request.resource.data.bio is string && request.resource.data.bio.size() <= 160))
-        && (!('photoURL' in request.resource.data) || (request.resource.data.photoURL is string && request.resource.data.photoURL.size() <= 2000));
+        && (!('photoURL' in request.resource.data) || validOptionalHttpsUrl(request.resource.data.photoURL, 2000));
       allow update: if signedIn() && request.auth.uid == userId
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName','bio','photoURL'])
         && validText(request.resource.data.displayName, 40)
         && (!('bio' in request.resource.data) || (request.resource.data.bio is string && request.resource.data.bio.size() <= 160))
-        && (!('photoURL' in request.resource.data) || (request.resource.data.photoURL is string && request.resource.data.photoURL.size() <= 2000));
+        && (!('photoURL' in request.resource.data) || validOptionalHttpsUrl(request.resource.data.photoURL, 2000));
       allow delete: if signedIn() && request.auth.uid == userId;
     }
 
@@ -46,12 +58,29 @@ service cloud.firestore {
         && request.resource.data.recipientUid != request.auth.uid
         && request.resource.data.status == 'pending'
         && requestId == pairKey(request.resource.data.senderUid, request.resource.data.recipientUid)
-        && request.resource.data.keys().hasOnly(['senderUid','senderName','recipientUid','recipientName','status','createdAt']);
-      allow update: if signedIn()
-        && resource.data.recipientUid == request.auth.uid
-        && resource.data.status == 'pending'
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
-        && request.resource.data.status in ['accepted','declined'];
+        && request.resource.data.keys().hasOnly(['senderUid','senderName','recipientUid','recipientName','status','createdAt'])
+        && validText(request.resource.data.senderName, 40)
+        && validText(request.resource.data.recipientName, 40)
+        && profileNameMatches(request.resource.data.senderUid, request.resource.data.senderName)
+        && profileNameMatches(request.resource.data.recipientUid, request.resource.data.recipientName);
+      allow update: if signedIn() && (
+        (resource.data.recipientUid == request.auth.uid
+          && resource.data.status == 'pending'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+          && request.resource.data.status in ['accepted','declined'])
+        || (resource.data.status == 'declined'
+          && request.resource.data.senderUid == request.auth.uid
+          && request.resource.data.recipientUid is string
+          && request.resource.data.recipientUid != request.auth.uid
+          && request.resource.data.status == 'pending'
+          && requestId == pairKey(request.resource.data.senderUid, request.resource.data.recipientUid)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['senderUid','senderName','recipientUid','recipientName','status','createdAt'])
+          && request.resource.data.keys().hasOnly(['senderUid','senderName','recipientUid','recipientName','status','createdAt'])
+          && validText(request.resource.data.senderName, 40)
+          && validText(request.resource.data.recipientName, 40)
+          && profileNameMatches(request.resource.data.senderUid, request.resource.data.senderName)
+          && profileNameMatches(request.resource.data.recipientUid, request.resource.data.recipientName))
+      );
       allow delete: if false;
     }
 
@@ -69,7 +98,9 @@ service cloud.firestore {
         && friendshipId == pairKey(request.resource.data.senderUid, request.resource.data.recipientUid)
         && getAfter(/databases/$(database)/documents/friendRequests/$(friendshipId)).data.status == 'accepted'
         && getAfter(/databases/$(database)/documents/friendRequests/$(friendshipId)).data.senderUid == request.resource.data.senderUid
-        && getAfter(/databases/$(database)/documents/friendRequests/$(friendshipId)).data.recipientUid == request.resource.data.recipientUid;
+        && getAfter(/databases/$(database)/documents/friendRequests/$(friendshipId)).data.recipientUid == request.resource.data.recipientUid
+        && getAfter(/databases/$(database)/documents/friendRequests/$(friendshipId)).data.senderName == request.resource.data.senderName
+        && getAfter(/databases/$(database)/documents/friendRequests/$(friendshipId)).data.recipientName == request.resource.data.recipientName;
       allow update, delete: if false;
     }
 
@@ -80,6 +111,7 @@ service cloud.firestore {
         && request.resource.data.uid == request.auth.uid
         && validText(request.resource.data.text, 240)
         && validText(request.resource.data.authorName, 40)
+        && profileNameMatches(request.auth.uid, request.resource.data.authorName)
         && request.resource.data.createdAt == request.time
         && request.resource.data.expiresAt > request.time
         && request.resource.data.expiresAt <= request.time + duration.value(24, 'h');
@@ -106,6 +138,7 @@ service cloud.firestore {
           && request.resource.data.keys().hasOnly(['uid','displayName','joinedAt'])
           && request.resource.data.uid == request.auth.uid
           && validText(request.resource.data.displayName, 40)
+          && profileNameMatches(request.auth.uid, request.resource.data.displayName)
           && get(/databases/$(database)/documents/groups/$(groupId)).data.visibility == 'public';
         allow update: if false;
         allow delete: if isAdmin() || (signedIn() && request.auth.uid == memberId);
@@ -115,21 +148,20 @@ service cloud.firestore {
     match /posts/{postId} {
       allow read: if resource.data.status == 'published' || (signedIn() && resource.data.uid == request.auth.uid) || isAdmin();
       allow create: if signedIn()
-        && request.resource.data.keys().hasOnly(['uid','authorName','text','createdAt','status','reportCount','likedBy','imageUrl','imagePath'])
+        && request.resource.data.keys().hasOnly(['uid','authorName','text','createdAt','status','reportCount','likedBy','imageUrl'])
         && request.resource.data.uid == request.auth.uid
+        && validText(request.resource.data.authorName, 40)
+        && profileNameMatches(request.auth.uid, request.resource.data.authorName)
         && (validText(request.resource.data.text, 1000)
-          || ('imagePath' in request.resource.data && request.resource.data.text is string && request.resource.data.text.size() == 0))
+          || ('imageUrl' in request.resource.data && request.resource.data.text is string && request.resource.data.text.size() == 0))
         && request.resource.data.status == 'published'
         && request.resource.data.reportCount == 0
         && request.resource.data.likedBy is list
         && request.resource.data.likedBy.size() == 0
-        && ((('imagePath' in request.resource.data) && ('imageUrl' in request.resource.data)
-          && request.resource.data.imagePath is string
-          && request.resource.data.imagePath.matches('post-images/' + request.auth.uid + '/.*')
-          && request.resource.data.imageUrl is string
-          && request.resource.data.imageUrl.size() <= 2000
-          && request.resource.data.imageUrl.matches('https://firebasestorage.googleapis.com/.*'))
-          || (!('imagePath' in request.resource.data) && !('imageUrl' in request.resource.data)));
+        && ((!('imageUrl' in request.resource.data))
+          || (request.resource.data.imageUrl is string
+            && request.resource.data.imageUrl.size() <= 2000
+            && request.resource.data.imageUrl.matches('https://.*')));
       allow update: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text'])
         && validText(request.resource.data.text, 1000))
@@ -151,6 +183,7 @@ service cloud.firestore {
         allow create: if signedIn()
           && get(/databases/$(database)/documents/posts/$(postId)).data.status == 'published'
           && request.resource.data.uid == request.auth.uid
+          && profileNameMatches(request.auth.uid, request.resource.data.authorName)
           && request.resource.data.keys().hasOnly(['uid','authorName','text','createdAt'])
           && validText(request.resource.data.text, 500)
           && validText(request.resource.data.authorName, 40);

@@ -8,9 +8,81 @@ const env = await initializeTestEnvironment({ projectId, firestore: { rules } })
 
 try {
   await env.clearFirestore();
-  const alice = env.authenticatedContext("alice").firestore();
-  const bob = env.authenticatedContext("bob").firestore();
-  const charlie = env.authenticatedContext("charlie").firestore();
+  const alice = env.authenticatedContext("alice", { email: "alice@example.com" }).firestore();
+  const bob = env.authenticatedContext("bob", { email: "bob@example.com" }).firestore();
+  const charlie = env.authenticatedContext("charlie", { email: "charlie@example.com" }).firestore();
+  const dave = env.authenticatedContext("dave", { email: "dave@example.com" }).firestore();
+
+  await assertSucceeds(setDoc(doc(alice, "users", "alice"), {
+    displayName: "Alice", email: "alice@example.com", createdAt: serverTimestamp(), bio: ""
+  }));
+  await assertFails(updateDoc(doc(alice, "users", "alice"), {
+    displayName: "A".repeat(41)
+  }));
+  await assertFails(updateDoc(doc(alice, "users", "alice"), {
+    bio: "x".repeat(161)
+  }));
+  await assertSucceeds(updateDoc(doc(alice, "users", "alice"), {
+    bio: "A short profile bio"
+  }));
+  await assertFails(setDoc(doc(dave, "users", "dave"), {
+    displayName: "Dave", email: "someone-else@example.com",
+    createdAt: serverTimestamp(), bio: ""
+  }));
+  await assertSucceeds(setDoc(doc(dave, "users", "dave"), {
+    displayName: "Dave", email: "dave@example.com",
+    createdAt: serverTimestamp(), bio: ""
+  }));
+  await assertSucceeds(updateDoc(doc(alice, "users", "alice"), {
+    photoURL: "https://images.example.com/alice.jpg"
+  }));
+  await assertFails(updateDoc(doc(alice, "users", "alice"), {
+    photoURL: "javascript:alert(1)"
+  }));
+
+  await assertSucceeds(setDoc(doc(alice, "publicProfiles", "alice"), {
+    displayName: "Alice", createdAt: serverTimestamp(),
+    photoURL: "https://images.example.com/alice.jpg"
+  }));
+  await assertFails(updateDoc(doc(alice, "publicProfiles", "alice"), {
+    photoURL: "http://images.example.com/alice.jpg"
+  }));
+  await assertFails(updateDoc(doc(alice, "publicProfiles", "alice"), {
+    photoURL: "javascript:alert(1)"
+  }));
+  await assertSucceeds(updateDoc(doc(alice, "publicProfiles", "alice"), {
+    photoURL: ""
+  }));
+  await assertSucceeds(setDoc(doc(bob, "publicProfiles", "bob"), {
+    displayName: "Bob", createdAt: serverTimestamp()
+  }));
+  await assertSucceeds(setDoc(doc(charlie, "publicProfiles", "charlie"), {
+    displayName: "Charlie", createdAt: serverTimestamp()
+  }));
+
+  const declinedRequestId = "bob_charlie";
+  await assertFails(setDoc(doc(bob, "friendRequests", declinedRequestId), {
+    senderUid: "bob", senderName: "Alice", recipientUid: "charlie",
+    recipientName: "Charlie", status: "pending", createdAt: serverTimestamp()
+  }));
+  await assertSucceeds(setDoc(doc(bob, "friendRequests", declinedRequestId), {
+    senderUid: "bob", senderName: "Bob", recipientUid: "charlie",
+    recipientName: "Charlie", status: "pending", createdAt: serverTimestamp()
+  }));
+  await assertSucceeds(updateDoc(doc(charlie, "friendRequests", declinedRequestId), {
+    status: "declined"
+  }));
+  await assertSucceeds(updateDoc(doc(bob, "friendRequests", declinedRequestId), {
+    senderUid: "bob", senderName: "Bob", recipientUid: "charlie",
+    recipientName: "Charlie", status: "pending", createdAt: serverTimestamp()
+  }));
+  await assertSucceeds(updateDoc(doc(charlie, "friendRequests", declinedRequestId), {
+    status: "declined"
+  }));
+  await assertSucceeds(updateDoc(doc(charlie, "friendRequests", declinedRequestId), {
+    senderUid: "charlie", senderName: "Charlie", recipientUid: "bob",
+    recipientName: "Bob", status: "pending", createdAt: serverTimestamp()
+  }));
 
   const requestId = "alice_bob";
   await assertSucceeds(setDoc(doc(alice, "friendRequests", requestId), {
@@ -46,11 +118,25 @@ try {
     uid: "alice", authorName: "Alice", text: "A public post",
     createdAt: serverTimestamp(), status: "published", reportCount: 0, likedBy: []
   }));
+  await assertFails(setDoc(doc(alice, "posts", "spoofed-author-post"), {
+    uid: "alice", authorName: "Bob", text: "Spoofed author",
+    createdAt: serverTimestamp(), status: "published", reportCount: 0, likedBy: []
+  }));
+  await assertSucceeds(addDoc(collection(alice, "posts", "sample-post", "comments"), {
+    uid: "alice", authorName: "Alice", text: "A comment", createdAt: serverTimestamp()
+  }));
+  await assertFails(addDoc(collection(alice, "posts", "sample-post", "comments"), {
+    uid: "alice", authorName: "Bob", text: "Spoofed comment", createdAt: serverTimestamp()
+  }));
   await assertSucceeds(updateDoc(doc(bob, "posts", "sample-post"), { likedBy: arrayUnion("bob") }));
   await assertFails(updateDoc(doc(charlie, "posts", "sample-post"), { likedBy: arrayRemove("bob") }));
 
   await assertSucceeds(setDoc(doc(alice, "stories", "alice-story"), {
     uid: "alice", authorName: "Alice", text: "A 24-hour story",
+    createdAt: serverTimestamp(), expiresAt: Timestamp.fromMillis(Date.now() + 23 * 60 * 60 * 1000)
+  }));
+  await assertFails(setDoc(doc(alice, "stories", "spoofed-story"), {
+    uid: "alice", authorName: "Bob", text: "Spoofed author",
     createdAt: serverTimestamp(), expiresAt: Timestamp.fromMillis(Date.now() + 23 * 60 * 60 * 1000)
   }));
   await assertFails(setDoc(doc(alice, "stories", "too-long-story"), {
@@ -65,6 +151,9 @@ try {
   await assertSucceeds(setDoc(doc(alice, "groups", "public-group", "members", "alice"), {
     uid: "alice", displayName: "Alice", joinedAt: serverTimestamp()
   }));
+  await assertFails(setDoc(doc(bob, "groups", "public-group", "members", "bob"), {
+    uid: "bob", displayName: "Alice", joinedAt: serverTimestamp()
+  }));
   await assertSucceeds(setDoc(doc(bob, "groups", "public-group", "members", "bob"), {
     uid: "bob", displayName: "Bob", joinedAt: serverTimestamp()
   }));
@@ -72,8 +161,12 @@ try {
   await assertSucceeds(setDoc(doc(alice, "posts", "image-only-post"), {
     uid: "alice", authorName: "Alice", text: "", createdAt: serverTimestamp(),
     status: "published", reportCount: 0, likedBy: [],
-    imageUrl: "https://firebasestorage.googleapis.com/v0/b/demo/o/image",
-    imagePath: "post-images/alice/image.png"
+    imageUrl: "https://images.example.com/photo.jpg"
+  }));
+  await assertFails(setDoc(doc(alice, "posts", "insecure-image-url"), {
+    uid: "alice", authorName: "Alice", text: "", createdAt: serverTimestamp(),
+    status: "published", reportCount: 0, likedBy: [],
+    imageUrl: "http://images.example.com/photo.jpg"
   }));
 
   await assertSucceeds(setDoc(doc(bob, "users", "bob", "fcmTokens", "token-1"), {

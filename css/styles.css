@@ -294,7 +294,7 @@ body.signed-out.dark .auth-tabs .tab.active{background:#2b3544}
 
 
 /* MySocial2 streamlined navigation and editable member profile */
-.community-intro,.right-column,#aiCorner,#groups{display:none!important}
+.community-intro,.right-column{display:none!important}
 .mobile-bottom-nav{display:none}
 .profile-section{scroll-margin-top:80px}
 .profile-summary{margin:14px 0}
