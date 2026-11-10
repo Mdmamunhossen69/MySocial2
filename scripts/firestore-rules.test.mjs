@@ -12,6 +12,27 @@ try {
   const bob = env.authenticatedContext("bob").firestore();
   const charlie = env.authenticatedContext("charlie").firestore();
 
+  await assertSucceeds(setDoc(doc(alice, "users", "alice"), {
+    displayName: "Alice", email: "alice@example.com", createdAt: serverTimestamp(), bio: ""
+  }));
+  await assertSucceeds(updateDoc(doc(alice, "users", "alice"), {
+    photoURL: "https://images.example.com/alice.jpg"
+  }));
+  await assertFails(updateDoc(doc(alice, "users", "alice"), {
+    photoURL: "javascript:alert(1)"
+  }));
+
+  await assertSucceeds(setDoc(doc(alice, "publicProfiles", "alice"), {
+    displayName: "Alice", createdAt: serverTimestamp(),
+    photoURL: "https://images.example.com/alice.jpg"
+  }));
+  await assertFails(updateDoc(doc(alice, "publicProfiles", "alice"), {
+    photoURL: "http://images.example.com/alice.jpg"
+  }));
+  await assertFails(updateDoc(doc(alice, "publicProfiles", "alice"), {
+    photoURL: "javascript:alert(1)"
+  }));
+
   const requestId = "alice_bob";
   await assertSucceeds(setDoc(doc(alice, "friendRequests", requestId), {
     senderUid: "alice", senderName: "Alice", recipientUid: "bob",
