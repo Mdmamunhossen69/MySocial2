@@ -8,12 +8,30 @@ const env = await initializeTestEnvironment({ projectId, firestore: { rules } })
 
 try {
   await env.clearFirestore();
-  const alice = env.authenticatedContext("alice").firestore();
-  const bob = env.authenticatedContext("bob").firestore();
-  const charlie = env.authenticatedContext("charlie").firestore();
+  const alice = env.authenticatedContext("alice", { email: "alice@example.com" }).firestore();
+  const bob = env.authenticatedContext("bob", { email: "bob@example.com" }).firestore();
+  const charlie = env.authenticatedContext("charlie", { email: "charlie@example.com" }).firestore();
+  const dave = env.authenticatedContext("dave", { email: "dave@example.com" }).firestore();
 
   await assertSucceeds(setDoc(doc(alice, "users", "alice"), {
     displayName: "Alice", email: "alice@example.com", createdAt: serverTimestamp(), bio: ""
+  }));
+  await assertFails(updateDoc(doc(alice, "users", "alice"), {
+    displayName: "A".repeat(41)
+  }));
+  await assertFails(updateDoc(doc(alice, "users", "alice"), {
+    bio: "x".repeat(161)
+  }));
+  await assertSucceeds(updateDoc(doc(alice, "users", "alice"), {
+    bio: "A short profile bio"
+  }));
+  await assertFails(setDoc(doc(dave, "users", "dave"), {
+    displayName: "Dave", email: "someone-else@example.com",
+    createdAt: serverTimestamp(), bio: ""
+  }));
+  await assertSucceeds(setDoc(doc(dave, "users", "dave"), {
+    displayName: "Dave", email: "dave@example.com",
+    createdAt: serverTimestamp(), bio: ""
   }));
   await assertSucceeds(updateDoc(doc(alice, "users", "alice"), {
     photoURL: "https://images.example.com/alice.jpg"
