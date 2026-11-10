@@ -38,6 +38,7 @@ jobs:
         run: npm run build:hosting
 
       - name: Verify Firebase Hosting credential exists
+        if: vars.FIREBASE_HOSTING_PREVIEW_ENABLED == 'true'
         env:
           FIREBASE_HOSTING_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_HOSTING_SERVICE_ACCOUNT }}
         run: |
