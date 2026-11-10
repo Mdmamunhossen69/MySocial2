@@ -44,6 +44,14 @@ GitHub Actions runs `npm test` on pushes and pull requests. This checks JavaScri
 - Firestore rules and indexes have a separate manual workflow, `.github/workflows/deploy-firestore.yml`. Before running it, add a repository Actions secret named `FIREBASE_SERVICE_ACCOUNT` containing a Firebase service-account JSON whose account has permission to deploy Firestore rules and indexes to project `mysocial2-5c3c5`. Do not commit or paste this credential into chat. The workflow deploys only Firestore rules and indexes; it does not deploy Cloud Functions or require Firebase Storage.
 - GitHub Pages deployment does not deploy Firebase rules. Confirm the Firestore deployment workflow succeeds before inviting real users.
 
+
+### Firebase Hosting preview (no production deployment)
+- Firebase Hosting serves only the allowlisted files copied into `dist/` by `npm run build:hosting`. Repository scripts, Firestore rules, Functions source, and GitHub workflow files are not included in the Hosting bundle.
+- `.github/workflows/firebase-hosting-preview.yml` runs JavaScript checks, Firestore Emulator tests, and the Hosting bundle build before creating a temporary preview channel for a pull request. Preview channels expire after 7 days.
+- Add a separate encrypted repository Actions secret named `FIREBASE_HOSTING_SERVICE_ACCOUNT` containing a service-account JSON with Firebase Hosting deployment permission for project `mysocial2-5c3c5`. Keep it separate from the Firestore deployment credential, never commit it, and never paste it into chat.
+- This workflow has **no production/live deployment trigger**. Production deployment remains a separate, manual decision and is not configured here.
+- **Preview privacy warning:** Firebase preview URLs are publicly accessible to anyone who has the URL. The preview app still connects to the configured Firebase project and can interact with its real Authentication and Firestore backend. Do not use real user data or perform write tests on the production backend through a preview URL. A separate staging Firebase project and staging web config are recommended before broader preview testing.
+
 ## Security checks
 The validation workflow also runs Firestore Rules unit tests in the local emulator. The rules require a confirmed friendship document before private chats and messages are readable or writable. Friend requests use a deterministic pair ID; accepting a request and creating the friendship record happen in one batch.
 
