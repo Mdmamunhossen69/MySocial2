@@ -32,6 +32,9 @@ try {
   await assertFails(updateDoc(doc(alice, "publicProfiles", "alice"), {
     photoURL: "javascript:alert(1)"
   }));
+  await assertSucceeds(updateDoc(doc(alice, "publicProfiles", "alice"), {
+    photoURL: ""
+  }));
 
   const requestId = "alice_bob";
   await assertSucceeds(setDoc(doc(alice, "friendRequests", requestId), {
