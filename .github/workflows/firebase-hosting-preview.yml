@@ -34,25 +34,31 @@ jobs:
       - name: Run Firestore Rules emulator tests
         run: npm run test:rules
 
-      - name: Build allowlisted Hosting bundle
+      - name: Build allowlisted production bundle for validation
         run: npm run build:hosting
 
-      - name: Verify Firebase Hosting credential exists
-        if: vars.FIREBASE_HOSTING_PREVIEW_ENABLED == 'true'
+      - name: Build isolated staging bundle
+        if: vars.FIREBASE_STAGING_HOSTING_PREVIEW_ENABLED == 'true'
         env:
-          FIREBASE_HOSTING_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_HOSTING_SERVICE_ACCOUNT }}
+          FIREBASE_TARGET: staging
+        run: npm run build:hosting
+
+      - name: Verify staging Firebase Hosting credential exists
+        if: vars.FIREBASE_STAGING_HOSTING_PREVIEW_ENABLED == 'true'
+        env:
+          FIREBASE_STAGING_HOSTING_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_STAGING_HOSTING_SERVICE_ACCOUNT }}
         run: |
-          if [ -z "$FIREBASE_HOSTING_SERVICE_ACCOUNT" ]; then
-            echo "::error::Missing repository Actions secret FIREBASE_HOSTING_SERVICE_ACCOUNT."
-            echo "Add the Firebase Hosting deployment service-account JSON as an encrypted repository secret."
+          if [ -z "$FIREBASE_STAGING_HOSTING_SERVICE_ACCOUNT" ]; then
+            echo "::error::Missing repository Actions secret FIREBASE_STAGING_HOSTING_SERVICE_ACCOUNT."
+            echo "Add a dedicated staging-project Hosting service-account JSON as an encrypted repository secret."
             exit 1
           fi
 
-      - name: Deploy temporary Firebase Hosting preview
-        if: vars.FIREBASE_HOSTING_PREVIEW_ENABLED == 'true'
+      - name: Deploy temporary staging Firebase Hosting preview
+        if: vars.FIREBASE_STAGING_HOSTING_PREVIEW_ENABLED == 'true'
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_HOSTING_SERVICE_ACCOUNT }}
-          projectId: mysocial2-5c3c5
+          firebaseServiceAccount: ${{ secrets.FIREBASE_STAGING_HOSTING_SERVICE_ACCOUNT }}
+          projectId: mysocial2-staging
           expires: 7d
