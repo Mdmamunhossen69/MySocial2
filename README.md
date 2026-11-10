@@ -5,7 +5,7 @@ A mobile-first Bengali/English community app built with HTML, CSS, JavaScript mo
 ## Implemented in the repository
 - Responsive social-network layout, Bengali/English toggle, dark theme and installable PWA shell
 - Firebase email/password registration and login
-- Public text and image feed with real-time updates (image-only posts supported, 5 MB limit)
+- Public text feed with real-time updates and HTTPS image URLs (direct file uploads are disabled until a trusted signed-upload service is added)
 - In-app notification inbox and FCM push-token registration; friend-request push sending is handled by Cloud Functions once deployed
 - Text-only stories that expire after 24 hours
 - Public community groups with create/join membership (group discussions are not enabled yet)
@@ -17,7 +17,7 @@ A mobile-first Bengali/English community app built with HTML, CSS, JavaScript mo
 - AI helper directory; all automated profiles are clearly labelled as AI
 
 ## Not implemented yet
-- Video uploads, group discussions/posts, full profile editing, and automated bot conversations
+- Video uploads, group discussions/posts, profile-photo file uploads, and automated bot conversations
 - Scheduled AI posts are implemented but remain inactive until the required GitHub Actions secrets are configured
 - AI profiles are always disclosed as AI and must not impersonate real people
 
