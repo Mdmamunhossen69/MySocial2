@@ -35,8 +35,18 @@ try {
   await assertSucceeds(updateDoc(doc(alice, "publicProfiles", "alice"), {
     photoURL: ""
   }));
+  await assertSucceeds(setDoc(doc(bob, "publicProfiles", "bob"), {
+    displayName: "Bob", createdAt: serverTimestamp()
+  }));
+  await assertSucceeds(setDoc(doc(charlie, "publicProfiles", "charlie"), {
+    displayName: "Charlie", createdAt: serverTimestamp()
+  }));
 
   const declinedRequestId = "bob_charlie";
+  await assertFails(setDoc(doc(bob, "friendRequests", declinedRequestId), {
+    senderUid: "bob", senderName: "Alice", recipientUid: "charlie",
+    recipientName: "Charlie", status: "pending", createdAt: serverTimestamp()
+  }));
   await assertSucceeds(setDoc(doc(bob, "friendRequests", declinedRequestId), {
     senderUid: "bob", senderName: "Bob", recipientUid: "charlie",
     recipientName: "Charlie", status: "pending", createdAt: serverTimestamp()
@@ -90,11 +100,25 @@ try {
     uid: "alice", authorName: "Alice", text: "A public post",
     createdAt: serverTimestamp(), status: "published", reportCount: 0, likedBy: []
   }));
+  await assertFails(setDoc(doc(alice, "posts", "spoofed-author-post"), {
+    uid: "alice", authorName: "Bob", text: "Spoofed author",
+    createdAt: serverTimestamp(), status: "published", reportCount: 0, likedBy: []
+  }));
+  await assertSucceeds(addDoc(collection(alice, "posts", "sample-post", "comments"), {
+    uid: "alice", authorName: "Alice", text: "A comment", createdAt: serverTimestamp()
+  }));
+  await assertFails(addDoc(collection(alice, "posts", "sample-post", "comments"), {
+    uid: "alice", authorName: "Bob", text: "Spoofed comment", createdAt: serverTimestamp()
+  }));
   await assertSucceeds(updateDoc(doc(bob, "posts", "sample-post"), { likedBy: arrayUnion("bob") }));
   await assertFails(updateDoc(doc(charlie, "posts", "sample-post"), { likedBy: arrayRemove("bob") }));
 
   await assertSucceeds(setDoc(doc(alice, "stories", "alice-story"), {
     uid: "alice", authorName: "Alice", text: "A 24-hour story",
+    createdAt: serverTimestamp(), expiresAt: Timestamp.fromMillis(Date.now() + 23 * 60 * 60 * 1000)
+  }));
+  await assertFails(setDoc(doc(alice, "stories", "spoofed-story"), {
+    uid: "alice", authorName: "Bob", text: "Spoofed author",
     createdAt: serverTimestamp(), expiresAt: Timestamp.fromMillis(Date.now() + 23 * 60 * 60 * 1000)
   }));
   await assertFails(setDoc(doc(alice, "stories", "too-long-story"), {
@@ -108,6 +132,9 @@ try {
   }));
   await assertSucceeds(setDoc(doc(alice, "groups", "public-group", "members", "alice"), {
     uid: "alice", displayName: "Alice", joinedAt: serverTimestamp()
+  }));
+  await assertFails(setDoc(doc(alice, "groups", "public-group", "members", "alice-spoof"), {
+    uid: "alice", displayName: "Bob", joinedAt: serverTimestamp()
   }));
   await assertSucceeds(setDoc(doc(bob, "groups", "public-group", "members", "bob"), {
     uid: "bob", displayName: "Bob", joinedAt: serverTimestamp()
