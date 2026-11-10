@@ -4,6 +4,7 @@ service cloud.firestore {
     function signedIn() { return request.auth != null; }
     function isAdmin() { return signedIn() && request.auth.token.admin == true; }
     function validText(value, max) { return value is string && value.size() > 0 && value.size() <= max; }
+    function validOptionalHttpsUrl(value, max) { return value is string && value.size() <= max && (value == '' || value.matches('https://.*')); }
     function pairKey(a, b) { return a < b ? a + '_' + b : b + '_' + a; }
 
     match /users/{userId} {
@@ -12,7 +13,8 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(['displayName','email','createdAt','bio'])
         && validText(request.resource.data.displayName, 40);
       allow update: if signedIn() && request.auth.uid == userId
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName','bio','photoURL']);
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName','bio','photoURL'])
+        && (!('photoURL' in request.resource.data) || validOptionalHttpsUrl(request.resource.data.photoURL, 2000));
       allow delete: if isAdmin();
     }
 
@@ -29,12 +31,12 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(['displayName','bio','photoURL','createdAt'])
         && validText(request.resource.data.displayName, 40)
         && (!('bio' in request.resource.data) || (request.resource.data.bio is string && request.resource.data.bio.size() <= 160))
-        && (!('photoURL' in request.resource.data) || (request.resource.data.photoURL is string && request.resource.data.photoURL.size() <= 2000));
+        && (!('photoURL' in request.resource.data) || validOptionalHttpsUrl(request.resource.data.photoURL, 2000));
       allow update: if signedIn() && request.auth.uid == userId
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName','bio','photoURL'])
         && validText(request.resource.data.displayName, 40)
         && (!('bio' in request.resource.data) || (request.resource.data.bio is string && request.resource.data.bio.size() <= 160))
-        && (!('photoURL' in request.resource.data) || (request.resource.data.photoURL is string && request.resource.data.photoURL.size() <= 2000));
+        && (!('photoURL' in request.resource.data) || validOptionalHttpsUrl(request.resource.data.photoURL, 2000));
       allow delete: if signedIn() && request.auth.uid == userId;
     }
 
