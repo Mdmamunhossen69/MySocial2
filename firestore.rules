@@ -15,9 +15,15 @@ service cloud.firestore {
       allow read: if signedIn() && (request.auth.uid == userId || isAdmin());
       allow create: if signedIn() && request.auth.uid == userId
         && request.resource.data.keys().hasOnly(['displayName','email','createdAt','bio'])
-        && validText(request.resource.data.displayName, 40);
+        && validText(request.resource.data.displayName, 40)
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.bio is string
+        && request.resource.data.bio.size() <= 160;
       allow update: if signedIn() && request.auth.uid == userId
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName','bio','photoURL'])
+        && (!('displayName' in request.resource.data) || validText(request.resource.data.displayName, 40))
+        && (!('bio' in request.resource.data) || (request.resource.data.bio is string && request.resource.data.bio.size() <= 160))
         && (!('photoURL' in request.resource.data) || validOptionalHttpsUrl(request.resource.data.photoURL, 2000));
       allow delete: if isAdmin();
     }
