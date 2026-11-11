@@ -7,7 +7,7 @@ A Bengali-first AI website builder running on Cloudflare Workers, Gemini, GitHub
 - GitHub OAuth with encrypted tokens and HttpOnly sessions.
 - Select an owned repository or let KING CODER create a new private repository.
 - Describe a website or provide a public HTTPS reference URL.
-- Generate a complete project manifest and show an editable preview before any GitHub write.
+- Generate a complete project manifest and show a signed, read-only preview before any GitHub write.
 - After explicit approval, create a separate `king-coder/build-*` branch and a Pull Request; do not write directly to the default branch.
 - Cloudflare publishing is manual and approval-gated; no automatic live deployment is triggered by this workflow.
 - Pull-request review and manual code proposal flow remain available.
@@ -17,7 +17,7 @@ A Bengali-first AI website builder running on Cloudflare Workers, Gemini, GitHub
 2. Keep “নতুন private repository তৈরি করো” selected, or choose one of your own repositories.
 3. Describe the website or include a public HTTPS URL in the prompt.
 4. Press “Preview তৈরি ও পরীক্ষা” to generate a proposed project. No repository is changed at this stage.
-5. Review or edit the proposed files. Only after explicit approval does KING CODER create a private repository if needed, commit to a separate feature branch, and open a Pull Request.
+5. Review the signed, read-only preview. Only the exact files covered by its short-lived approval token can be committed after explicit approval; KING CODER creates a separate feature branch and Pull Request.
 6. Review the Pull Request and merge it yourself. Live deployment is not automatic.
 
 The generated project's manual deploy workflow can publish to Cloudflare Workers only when you manually run its `workflow_dispatch` action and the GitHub repository has both Actions secrets:
@@ -50,7 +50,9 @@ GitHub OAuth callback:
 ## Limits and safety
 - Current autonomous generator creates at most 20 files and 350 KB per project.
 - Only repositories owned by the connected GitHub username can be updated.
-- Reference URLs must be public HTTPS pages.
+- Reference URLs must use public HTTPS hostnames. For safety, the Worker never fetches user-supplied reference URLs; it only passes the URL as a design hint to Gemini. This removes redirect and private-network SSRF exposure.
+- Preview approval tokens are HMAC-signed with the existing GitHub OAuth client secret, bound to the user, target repository, summary and exact file contents, and expire after 10 minutes.
+- Website Build quota is consumed only after request, URL and target repository validation; malformed requests do not consume the daily quota.
 - Repository contents and fetched reference text are treated as untrusted input.
 - Generated code is tested in GitHub Actions; a successful build does not guarantee every feature is bug-free.
 - Cloudflare free-plan limits and Gemini model availability may change.

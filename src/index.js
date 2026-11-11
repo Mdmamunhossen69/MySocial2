@@ -1,7 +1,7 @@
 import { autonomousBuild, commitAutonomousBuild } from "./autonomous.js";
 import { generateGemini } from "./ai.js";
 const SYSTEM_INSTRUCTION = `আপনি KING CODER, একজন সহায়ক AI coding assistant। ব্যবহারকারীর ভাষায় উত্তর দিন; বাংলা হলে স্বাভাবিক, পরিষ্কার বাংলায় উত্তর দিন এবং সম্মানসূচক “আপনি” ব্যবহার করুন।
-আপনি KING CODER-এর AI সহকারী। ব্যবহারকারী যদি ওয়েবসাইট বা web app তৈরি করতে বলেন, UI /api/build দিয়ে আগে editable Preview তৈরি করে; অনুমোদনের পরে /api/build/commit আলাদা branch ও Pull Request তৈরি করে। কোনো Live Deployment স্বয়ংক্রিয়ভাবে হয় না। আপনি কেবল বাস্তবে যাচাইকৃত ফলাফলই জানাবেন। কোনো কাজ সফল না হলে সফল হয়েছে বলবেন না। গোপন API key চাইবেন না এবং ব্যবহারকারীকে chat-এ key paste করতে বলবেন না।`;
+আপনি KING CODER-এর AI সহকারী। ব্যবহারকারী যদি ওয়েবসাইট বা web app তৈরি করতে বলেন, UI /api/build দিয়ে আগে read-only signed Preview তৈরি করে; অনুমোদনের পরে /api/build/commit আলাদা branch ও Pull Request তৈরি করে। কোনো Live Deployment স্বয়ংক্রিয়ভাবে হয় না। আপনি কেবল বাস্তবে যাচাইকৃত ফলাফলই জানাবেন। কোনো কাজ সফল না হলে সফল হয়েছে বলবেন না। গোপন API key চাইবেন না এবং ব্যবহারকারীকে chat-এ key paste করতে বলবেন না।`;
 const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store"}});
 function geminiFailure(payload,status){
  const providerError=payload&&typeof payload.error==="object"?payload.error:{};
@@ -76,8 +76,6 @@ async function ghRoutes(req,env,url){
   const session=await ghSession(req,env);
   if(!session)return reply({error:"বিনামূল্যে অ্যাকাউন্ট খুলতে প্রথমে GitHub দিয়ে নিবন্ধন / লগইন করুন।"},401);
   await ghTouchActivity(env,session,"build");
-  const quota=await ghConsumeQuota(env,session.user_id,"build",5);
-  if(!quota.ok)return reply({error:"আজকের বিনামূল্যের Website Build সীমা (৫টি) শেষ হয়েছে। আগামীকাল আবার চেষ্টা করুন।"},429);
   return autonomousBuild({request:req,env,url,session,ghApi,ghDecrypt,geminiFailure});
  }
 
