@@ -29,7 +29,7 @@ async function ghConsumeQuota(env,userId,kind,limit){
 }
 async function ghSession(req,env){if(!env.DB)return null;const raw=ghCookie(req);if(!raw)return null;const row=await env.DB.prepare("SELECT s.user_id,s.expires_at,c.username,c.encrypted_token FROM sessions s JOIN github_connections c ON c.user_id=s.user_id WHERE s.session_hash=?1").bind(await ghHash(raw)).first();return row&&row.expires_at>Date.now()?row:null;}
 const ADMIN_GITHUB_USERNAME="Mdmamunhossen69";
-async function ghTouchActivity(env,session,feature){await env.DB.prepare("INSERT INTO user_activity(user_id,last_seen,last_feature) VALUES(?1,?2,?3) ON CONFLICT(user_id) DO UPDATE SET last_seen=excluded.last_seen,last_feature=excluded.last_feature").bind(String(session.user_id),Date.now(),feature).run();}
+async function ghTouchActivity(env,session,feature){if(feature==="online"){await env.DB.prepare("INSERT INTO user_activity(user_id,last_seen,last_feature) VALUES(?1,?2,?3) ON CONFLICT(user_id) DO UPDATE SET last_seen=excluded.last_seen").bind(String(session.user_id),Date.now(),feature).run();}else{await env.DB.prepare("INSERT INTO user_activity(user_id,last_seen,last_feature) VALUES(?1,?2,?3) ON CONFLICT(user_id) DO UPDATE SET last_seen=excluded.last_seen,last_feature=excluded.last_feature").bind(String(session.user_id),Date.now(),feature).run();}}
 async function ghRoutes(req,env,url){
  const reply=(d,s=200,h={})=>new Response(JSON.stringify(d),{status:s,headers:{"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store",...h}});
  if(url.pathname==="/api/activity/heartbeat"&&req.method==="POST"){
