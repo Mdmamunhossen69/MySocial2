@@ -1,0 +1,70 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { generateGemini } from "../src/ai.js";
+
+test("blocks Gemini requests unless Free tier is explicitly verified", async () => {
+  const originalFetch = globalThis.fetch;
+  let called = false;
+  globalThis.fetch = async () => { called = true; throw new Error("fetch must not run"); };
+  try {
+    const result = await generateGemini({
+      env: { GEMINI_MODEL: "gemini-3.5-flash", GEMINI_API_KEY: "test-key", GEMINI_API_BILLING_STATUS: "unverified" },
+      systemInstruction: "test",
+      contents: [{ role: "user", parts: [{ text: "hello" }] }]
+    });
+    assert.equal(result.blocked, true);
+    assert.equal(result.attempts, 0);
+    assert.equal(result.response.status, 503);
+    assert.equal(called, false);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("sends one request when Free tier is verified and provider succeeds", async () => {
+  const originalFetch = globalThis.fetch;
+  let calls = 0;
+  let requestUrl = "";
+  let requestHeaders;
+  globalThis.fetch = async (url, options) => {
+    calls++;
+    requestUrl = String(url);
+    requestHeaders = options.headers;
+    return new Response(JSON.stringify({ candidates: [] }), { status: 200, headers: { "Content-Type": "application/json" } });
+  };
+  try {
+    const result = await generateGemini({
+      env: { GEMINI_MODEL: "gemini-3.5-flash", GEMINI_API_KEY: "test-key", GEMINI_API_BILLING_STATUS: "verified_free" },
+      systemInstruction: "test",
+      contents: [{ role: "user", parts: [{ text: "hello" }] }]
+    });
+    assert.equal(result.response.status, 200);
+    assert.equal(result.attempts, 1);
+    assert.equal(calls, 1);
+    assert.match(requestUrl, /gemini-3\.5-flash:generateContent$/);
+    assert.equal(requestHeaders["x-goog-api-key"], "test-key");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("does not retry quota or authentication errors", async () => {
+  const originalFetch = globalThis.fetch;
+  let calls = 0;
+  globalThis.fetch = async () => {
+    calls++;
+    return new Response(JSON.stringify({ error: { status: "RESOURCE_EXHAUSTED" } }), { status: 429 });
+  };
+  try {
+    const result = await generateGemini({
+      env: { GEMINI_MODEL: "gemini-3.5-flash", GEMINI_API_KEY: "test-key", GEMINI_API_BILLING_STATUS: "verified_free" },
+      systemInstruction: "test",
+      contents: [{ role: "user", parts: [{ text: "hello" }] }]
+    });
+    assert.equal(result.response.status, 429);
+    assert.equal(result.attempts, 1);
+    assert.equal(calls, 1);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
