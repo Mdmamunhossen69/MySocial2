@@ -58,7 +58,8 @@ async function ghRoutes(req,env,url){
   if(total>180000)return reply({error:"AI-এর প্রস্তাবিত কোডের আকার বেশি।"},502);
   return reply({ok:true,summary:String(proposal.summary||"কোড পরিবর্তনের প্রস্তাব"),notes:Array.isArray(proposal.notes)?proposal.notes.slice(0,8):[],files:proposal.files,branch,repository:owner+"/"+repo});
  }
-\n if(url.pathname==="/api/github/commit"&&req.method==="POST"){
+
+ if(url.pathname==="/api/github/commit"&&req.method==="POST"){
   const origin=req.headers.get("Origin");if(origin!==url.origin)return reply({error:"Cross-origin request blocked."},403);
   const s=await ghSession(req,env);if(!s)return reply({error:"প্রথমে GitHub সংযোগ করুন।"},401);let b;try{b=await req.json();}catch{return reply({error:"সঠিক JSON পাঠান।"},400);}
   const owner=String(b.owner||""),repo=String(b.repo||""),branch=String(b.branch||""),message=String(b.message||"").trim(),files=b.files;
