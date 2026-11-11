@@ -21,6 +21,12 @@ async function ghKey(env){if(!env.GITHUB_CLIENT_SECRET)throw new Error("GITHUB_C
 async function ghEncrypt(env,token){const iv=crypto.getRandomValues(new Uint8Array(12));const out=await crypto.subtle.encrypt({name:"AES-GCM",iv},await ghKey(env),ghEnc.encode(token));return ghB64(iv)+"."+ghB64(out);}
 async function ghDecrypt(env,value){const [iv,data]=value.split(".");const dec=s=>Uint8Array.from(atob(s.replace(/-/g,"+").replace(/_/g,"/")+"=".repeat((4-s.length%4)%4)),c=>c.charCodeAt(0));return new TextDecoder().decode(await crypto.subtle.decrypt({name:"AES-GCM",iv:dec(iv)},await ghKey(env),dec(data)));}
 async function ghApi(path,token,opts={}){return fetch("https://api.github.com"+path,{...opts,headers:{"Accept":"application/vnd.github+json","Authorization":"Bearer "+token,"X-GitHub-Api-Version":"2022-11-28","User-Agent":"KING-CODER",...(opts.headers||{})}});}
+async function ghConsumeQuota(env,userId,kind,limit){
+ const day=new Date().toISOString().slice(0,10);
+ const column=kind==="chat"?"chat_count":kind==="build"?"build_count":"code_count";
+ const result=await env.DB.prepare("INSERT INTO user_usage(user_id,usage_date,chat_count,build_count,code_count) VALUES(?1,?2,?3,?4,?5) ON CONFLICT(user_id,usage_date) DO UPDATE SET "+column+"="+column+"+1 WHERE "+column+" < ?6 RETURNING "+column+" AS used").bind(String(userId),day,kind==="chat"?1:0,kind==="build"?1:0,kind==="code"?1:0,limit).first();
+ return result?{ok:true,used:result.used,limit}:{ok:false,limit};
+}
 async function ghSession(req,env){if(!env.DB)return null;const raw=ghCookie(req);if(!raw)return null;const row=await env.DB.prepare("SELECT s.user_id,s.expires_at,c.username,c.encrypted_token FROM sessions s JOIN github_connections c ON c.user_id=s.user_id WHERE s.session_hash=?1").bind(await ghHash(raw)).first();return row&&row.expires_at>Date.now()?row:null;}
 async function ghRoutes(req,env,url){
  const reply=(d,s=200,h={})=>new Response(JSON.stringify(d),{status:s,headers:{"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store",...h}});
@@ -46,12 +52,16 @@ async function ghRoutes(req,env,url){
 
  if(url.pathname==="/api/build"&&req.method==="POST"){
   const session=await ghSession(req,env);
+  if(!session)return reply({error:"বিনামূল্যে অ্যাকাউন্ট খুলতে প্রথমে GitHub দিয়ে নিবন্ধন / লগইন করুন।"},401);
+  const quota=await ghConsumeQuota(env,session.user_id,"build",5);
+  if(!quota.ok)return reply({error:"আজকের বিনামূল্যের Website Build সীমা (৫টি) শেষ হয়েছে। আগামীকাল আবার চেষ্টা করুন।"},429);
   return autonomousBuild({request:req,env,url,session,ghApi,ghDecrypt,geminiFailure});
  }
 
  if(url.pathname==="/api/code/generate"&&req.method==="POST"){
   const origin=req.headers.get("Origin");if(origin!==url.origin)return reply({error:"Cross-origin request blocked."},403);
-  const session=await ghSession(req,env);if(!session)return reply({error:"প্রথমে GitHub সংযোগ করুন।"},401);
+  const session=await ghSession(req,env);if(!session)return reply({error:"বিনামূল্যে অ্যাকাউন্ট খুলতে প্রথমে GitHub দিয়ে নিবন্ধন / লগইন করুন।"},401);
+  const quota=await ghConsumeQuota(env,session.user_id,"code",20);if(!quota.ok)return reply({error:"আজকের বিনামূল্যের Code Generation সীমা (২০টি) শেষ হয়েছে। আগামীকাল আবার চেষ্টা করুন।"},429);
   if(!env.GEMINI_API_KEY)return reply({error:"Gemini API secret নেই।"},503);
   let body;try{body=await req.json();}catch{return reply({error:"সঠিক JSON পাঠান।"},400);}
   const owner=String(body.owner||""),repo=String(body.repo||""),branch=String(body.branch||""),prompt=String(body.prompt||"").trim();
@@ -98,6 +108,11 @@ export default {
   const githubResponse=await ghRoutes(request,env,url);if(githubResponse)return githubResponse;
   if(url.pathname==="/api/chat"){
    if(request.method!=="POST")return json({error:"শুধু POST request গ্রহণ করা হয়।"},405);
+   if(request.headers.get("Origin")!==url.origin)return json({error:"Cross-origin request blocked."},403);
+   const session=await ghSession(request,env);
+   if(!session)return json({error:"বিনামূল্যে অ্যাকাউন্ট খুলতে প্রথমে GitHub দিয়ে নিবন্ধন / লগইন করুন।"},401);
+   const quota=await ghConsumeQuota(env,session.user_id,"chat",100);
+   if(!quota.ok)return json({error:"আজকের বিনামূল্যের AI Chat সীমা (১০০টি বার্তা) শেষ হয়েছে। আগামীকাল আবার চেষ্টা করুন।"},429);
    if(!env.GEMINI_API_KEY)return json({error:"সার্ভারে GEMINI_API_KEY secret সেট করা নেই।"},503);
    let body;
    try{
