@@ -16,7 +16,7 @@ async function ghSession(req,env){if(!env.DB)return null;const raw=ghCookie(req)
 async function ghRoutes(req,env,url){
  const reply=(d,s=200,h={})=>new Response(JSON.stringify(d),{status:s,headers:{"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store",...h}});
  if(url.pathname==="/api/github/login"&&req.method==="GET"){
-  if(!env.DB||!env.GITHUB_CLIENT_ID)return reply({error:"GitHub OAuth এখনো কনফিগার করা হয়নি।"},503);
+  if(!env.DB||!env.GITHUB_CLIENT_ID||!env.GITHUB_CLIENT_SECRET)return reply({error:"GitHub OAuth এখনো কনফিগার করা হয়নি।"},503);
   const state=ghRandom();await env.DB.prepare("INSERT INTO oauth_states(state_hash,expires_at) VALUES(?1,?2)").bind(await ghHash(state),Date.now()+600000).run();
   const target=new URL("https://github.com/login/oauth/authorize");target.searchParams.set("client_id",env.GITHUB_CLIENT_ID);target.searchParams.set("redirect_uri",url.origin+"/api/github/callback");target.searchParams.set("scope","repo read:user");target.searchParams.set("state",state);return Response.redirect(target.toString(),302);
  }
@@ -29,12 +29,13 @@ async function ghRoutes(req,env,url){
   const encrypted=await ghEncrypt(env,auth.access_token);await env.DB.prepare("INSERT INTO github_connections(user_id,username,encrypted_token,created_at) VALUES(?1,?2,?3,?4) ON CONFLICT(user_id) DO UPDATE SET username=excluded.username,encrypted_token=excluded.encrypted_token,created_at=excluded.created_at").bind(String(user.id),user.login,encrypted,Date.now()).run();
   const session=ghRandom();await env.DB.prepare("INSERT INTO sessions(session_hash,user_id,expires_at) VALUES(?1,?2,?3)").bind(await ghHash(session),String(user.id),Date.now()+2592000000).run();return new Response(null,{status:302,headers:{"Location":url.origin+"/?github=connected","Set-Cookie":ghSetCookie(session,2592000)}});
  }
- if(url.pathname==="/api/github/status"&&req.method==="GET"){const s=await ghSession(req,env);return reply({configured:Boolean(env.DB&&env.GITHUB_CLIENT_ID),connected:Boolean(s),username:s?.username||null});}
- if(url.pathname==="/api/github/disconnect"&&req.method==="POST"){if(!env.DB)return reply({error:"D1 database binding নেই।"},503);const raw=ghCookie(req);if(raw)await env.DB.prepare("DELETE FROM sessions WHERE session_hash=?1").bind(await ghHash(raw)).run();return reply({ok:true},200,{"Set-Cookie":ghSetCookie("",0)});}
+ if(url.pathname==="/api/github/status"&&req.method==="GET"){const s=await ghSession(req,env);return reply({configured:Boolean(env.DB&&env.GITHUB_CLIENT_ID&&env.GITHUB_CLIENT_SECRET),connected:Boolean(s),username:s?.username||null});}
+ if(url.pathname==="/api/github/disconnect"&&req.method==="POST"){const origin=req.headers.get("Origin");if(origin&&origin!==url.origin)return reply({error:"Cross-origin request blocked."},403);if(!env.DB)return reply({error:"D1 database binding নেই।"},503);const raw=ghCookie(req);if(raw)await env.DB.prepare("DELETE FROM sessions WHERE session_hash=?1").bind(await ghHash(raw)).run();return reply({ok:true},200,{"Set-Cookie":ghSetCookie("",0)});}
  if(url.pathname==="/api/github/repos"&&req.method==="GET"){
   const s=await ghSession(req,env);if(!s)return reply({error:"প্রথমে GitHub সংযোগ করুন।"},401);const token=await ghDecrypt(env,s.encrypted_token),r=await ghApi("/user/repos?per_page=50&sort=updated&affiliation=owner,collaborator,organization_member",token),data=await r.json().catch(()=>[]);if(!r.ok)return reply({error:"GitHub repository তালিকা আনা যায়নি।"},502);return reply({repositories:data.map(x=>({name:x.name,full_name:x.full_name,private:x.private,default_branch:x.default_branch,html_url:x.html_url}))});
  }
  if(url.pathname==="/api/github/commit"&&req.method==="POST"){
+  const origin=req.headers.get("Origin");if(origin&&origin!==url.origin)return reply({error:"Cross-origin request blocked."},403);
   const s=await ghSession(req,env);if(!s)return reply({error:"প্রথমে GitHub সংযোগ করুন।"},401);let b;try{b=await req.json();}catch{return reply({error:"সঠিক JSON পাঠান।"},400);}
   const owner=String(b.owner||""),repo=String(b.repo||""),branch=String(b.branch||""),message=String(b.message||"").trim(),files=b.files;
   if(owner.toLowerCase()!==s.username.toLowerCase())return reply({error:"নিরাপত্তার জন্য আপাতত শুধু আপনার নিজের repository-তে লেখা যাবে।"},403);
@@ -54,7 +55,7 @@ export default {
  async fetch(request,env){
   const url=new URL(request.url);
   if(url.pathname==="/api/health"&&request.method==="GET"){
-   return json({ok:true,service:"KING CODER API",configured:Boolean(env.GEMINI_API_KEY),model:env.GEMINI_MODEL||"gemini-3.5-flash"});
+   return json({ok:true,service:"KING CODER API",configured:Boolean(env.GEMINI_API_KEY),githubConfigured:Boolean(env.DB&&env.GITHUB_CLIENT_ID&&env.GITHUB_CLIENT_SECRET),databaseConfigured:Boolean(env.DB),model:env.GEMINI_MODEL||"gemini-3.5-flash"});
   }
   const githubResponse=await ghRoutes(request,env,url);if(githubResponse)return githubResponse;
   if(url.pathname==="/api/chat"){
