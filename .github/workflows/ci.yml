@@ -3,11 +3,11 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [main]
+    branches-ignore: [main]
 permissions:
   contents: read
 jobs:
-  syntax:
+  syntax-and-tests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -23,5 +23,7 @@ jobs:
         run: |
           node -e 'const fs=require("node:fs"); const html=fs.readFileSync("public/index.html","utf8"); const scripts=[...html.matchAll(/<script>([\s\S]*?)<\/script>/g)]; if(!scripts.length) throw new Error("No inline frontend script found"); fs.writeFileSync("/tmp/king-coder-frontend.js",scripts[scripts.length-1][1]);'
           node --check /tmp/king-coder-frontend.js
+      - name: Test zero-cost AI guard
+        run: node --experimental-default-type=module --test tests/*.test.mjs
       - name: Check whitespace errors
         run: git diff --check
