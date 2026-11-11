@@ -1,31 +1,51 @@
 # KING CODER
 
-Bengali-friendly AI coding assistant prototype using Cloudflare Workers, Gemini, and GitHub OAuth.
+A Bengali-first AI website builder running on Cloudflare Workers, Gemini, GitHub OAuth, and D1.
 
-## Current capabilities
-- Responsive Bengali chat UI and Gemini API proxy.
-- GitHub OAuth login with one-time state validation.
-- OAuth tokens encrypted at rest in D1 using AES-GCM; HttpOnly, Secure, SameSite=Lax session cookies.
-- List repositories, generate a proposed code change using the current branch files as context, review/edit the preview, and create a user-approved commit containing up to 20 files (1 MB total).
-- Writes are restricted to repositories owned by the connected GitHub username.
-- This is an early code-generation workflow, not a fully autonomous coding agent: it has no isolated code execution sandbox, automatic test runner, persistent project history, or multi-step agent loop. Generated changes are proposals; the user must review and explicitly approve each commit.
+## Capabilities
+- Gemini chat in Bengali and English.
+- GitHub OAuth with encrypted tokens and HttpOnly sessions.
+- Select an owned repository or let KING CODER create a new private repository.
+- Describe a website or provide a public HTTPS reference URL.
+- Generate a complete project manifest, commit files to GitHub, and add a GitHub Actions workflow for dependency installation, tests, build, and Wrangler dry-run validation.
+- Pull-request review and manual code proposal flow remain available.
 
-## GitHub OAuth setup (Cloudflare)
-1. Create a D1 database and execute `migrations/0001_github_oauth.sql` in its Console.
-2. Add a D1 binding named `DB` to the Worker.
-3. Create a GitHub OAuth App. Authorization callback URL:
-   `https://mysocial2.mdmamunhossenlimon7.workers.dev/api/github/callback`
-4. Add Production Worker secrets: `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, The OAuth client secret is used as the HKDF root to derive the AES-GCM token-encryption key; no extra encryption secret is needed.
-5. Keep the existing `GEMINI_API_KEY` secret. Redeploy after adding bindings/secrets.
-6. Open `/api/github/login` on the live site to connect.
+## Autonomous website creation
+1. Connect GitHub in the KING CODER UI.
+2. Keep “নতুন private repository তৈরি করো” selected, or choose one of your own repositories.
+3. Describe the website or include a public HTTPS URL in the prompt.
+4. Press “পাঠান” (website creation requests are automatically routed to the build workflow), or press “সম্পূর্ণ তৈরি ও পরীক্ষা”.
+5. KING CODER creates the project and commits it. GitHub Actions then installs dependencies, runs available tests/build scripts, and validates Wrangler configuration.
 
-The OAuth app requests `repo` and `read:user` permissions so it can write to private repositories. Review the GitHub consent page. Disconnecting clears this browser session; revoke the OAuth App under GitHub Settings → Applications to revoke its grant.
+The generated project's deploy workflow publishes to Cloudflare Workers only when the GitHub repository has both Actions secrets:
+- `CLOUDFLARE_API_TOKEN`: a Cloudflare API token with permission to deploy Workers scripts.
+- `CLOUDFLARE_ACCOUNT_ID`: the target Cloudflare account ID.
+
+For this KING CODER Worker itself, the repository's `.github/workflows/ci.yml` also deploys the existing Worker on pushes to `main` when those same two GitHub Actions secrets exist. Without them, CI can run but deployment is skipped. Do not paste tokens into chat or commit them to the repository.
+
+## Cloudflare Worker configuration
+- D1 binding: `DB`
+- D1 database: `king-coder-db`
+- Required Worker secrets: `GEMINI_API_KEY`, `GITHUB_CLIENT_SECRET`
+- Required Worker variable: `GITHUB_CLIENT_ID`
+- Gemini model variable: `GEMINI_MODEL`
+
+GitHub OAuth callback:
+`https://mysocial2.mdmamunhossenlimon7.workers.dev/api/github/callback`
 
 ## API
+- `GET /api/health`
 - `GET /api/github/login`, `GET /api/github/callback`
 - `GET /api/github/status`, `GET /api/github/repos`
-- `POST /api/code/generate` (authenticated; reads up to 8 small text files from the selected branch and returns a JSON proposal).\n- `POST /api/github/commit` (authenticated; same-origin only; rejects workflow-file paths) with JSON: `{"owner":"your-login","repo":"project","branch":"main","message":"Add files","files":[{"path":"index.html","content":"..."}]}`
+- `POST /api/build` (autonomous project generation and GitHub commit)
+- `POST /api/code/generate` (review-first code proposal)
+- `POST /api/github/commit` (user-approved code commit)
 - `POST /api/github/disconnect`
 
-## Safety
-Never put secrets in browser code, Git, or chat. Add explicit user confirmation, audit logs, quotas, a code execution sandbox and automated tests before enabling public autonomous operation. Free-tier quotas and model availability can change.
+## Limits and safety
+- Current autonomous generator creates at most 20 files and 350 KB per project.
+- Only repositories owned by the connected GitHub username can be updated.
+- Reference URLs must be public HTTPS pages.
+- Repository contents and fetched reference text are treated as untrusted input.
+- Generated code is tested in GitHub Actions; a successful build does not guarantee every feature is bug-free.
+- Cloudflare free-plan limits and Gemini model availability may change.
