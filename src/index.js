@@ -35,8 +35,31 @@ async function ghRoutes(req,env,url){
  if(url.pathname==="/api/github/repos"&&req.method==="GET"){
   const s=await ghSession(req,env);if(!s)return reply({error:"প্রথমে GitHub সংযোগ করুন।"},401);const token=await ghDecrypt(env,s.encrypted_token),r=await ghApi("/user/repos?per_page=50&sort=updated&affiliation=owner,collaborator,organization_member",token),data=await r.json().catch(()=>[]);if(!r.ok)return reply({error:"GitHub repository তালিকা আনা যায়নি।"},502);return reply({repositories:data.map(x=>({name:x.name,full_name:x.full_name,private:x.private,default_branch:x.default_branch,html_url:x.html_url}))});
  }
- if(url.pathname==="/api/github/commit"&&req.method==="POST"){
-  const origin=req.headers.get("Origin");if(origin&&origin!==url.origin)return reply({error:"Cross-origin request blocked."},403);
+
+ if(url.pathname==="/api/code/generate"&&req.method==="POST"){
+  const origin=req.headers.get("Origin");if(origin!==url.origin)return reply({error:"Cross-origin request blocked."},403);
+  const session=await ghSession(req,env);if(!session)return reply({error:"প্রথমে GitHub সংযোগ করুন।"},401);
+  if(!env.GEMINI_API_KEY)return reply({error:"Gemini API secret নেই।"},503);
+  let body;try{body=await req.json();}catch{return reply({error:"সঠিক JSON পাঠান।"},400);}
+  const owner=String(body.owner||""),repo=String(body.repo||""),branch=String(body.branch||""),prompt=String(body.prompt||"").trim();
+  if(owner.toLowerCase()!==session.username.toLowerCase()||!/^[A-Za-z0-9_.-]{1,100}$/.test(repo)||!/^[A-Za-z0-9][A-Za-z0-9._/-]{0,180}$/.test(branch)||!prompt||prompt.length>8000)return reply({error:"Repository, branch বা নির্দেশনা সঠিক নয়।"},400);
+  const token=await ghDecrypt(env,session.encrypted_token),base="/repos/"+encodeURIComponent(owner)+"/"+encodeURIComponent(repo);
+  const rr=await ghApi(base+"/git/ref/heads/"+branch.split("/").map(encodeURIComponent).join("/"),token),ref=await rr.json().catch(()=>({}));if(!rr.ok)return reply({error:"Repository branch পড়া যায়নি।"},502);
+  const tr=await ghApi(base+"/git/trees/"+ref.object.sha+"?recursive=1",token),tree=await tr.json().catch(()=>({}));if(!tr.ok||!Array.isArray(tree.tree))return reply({error:"Repository file list পড়া যায়নি।"},502);
+  const candidates=tree.tree.filter(x=>x.type==="blob"&&x.size<=18000&&/\.(html|css|js|jsx|ts|tsx|json|md|py|php|sql|toml|yml|yaml)$/i.test(x.path)&&!x.path.startsWith(".git/")&&!x.path.startsWith("node_modules/")).slice(0,8);
+  let context="",used=0;for(const file of candidates){if(used>55000)break;const fr=await ghApi(base+"/contents/"+file.path.split("/").map(encodeURIComponent).join("/")+"?ref="+encodeURIComponent(branch),token),fd=await fr.json().catch(()=>({}));if(fr.ok&&fd.encoding==="base64"&&fd.content){let decoded;try{decoded=atob(fd.content.replace(/\n/g,""));}catch{continue;}const textContent=decodeURIComponent(escape(decoded)).slice(0,12000);context+="\n\n--- "+file.path+" ---\n"+textContent;used+=textContent.length;}}
+  const instruction="You are KING CODER, a cautious senior software engineer. Return ONLY valid JSON with shape {\"summary\":string,\"files\":[{\"path\":string,\"content\":string}],\"notes\":[string]}. Create complete replacement contents for every changed file. Prefer minimal edits; preserve existing project conventions. Never include secrets. Do not modify .github/workflows, .git, package lockfiles, or dependency manifests. Limit to 8 files and 180000 characters total. If the request is underspecified, make reasonable safe assumptions and state them in notes. Output no markdown fences.";
+  const userPrompt="User task:\n"+prompt+"\n\nRepository files (current branch snapshot):\n"+(context||"(No readable text files found)")+"\n\nGenerate the proposed file changes.";
+  let ai;try{ai=await fetch("https://generativelanguage.googleapis.com/v1beta/models/"+encodeURIComponent(env.GEMINI_MODEL||"gemini-3.5-flash")+":generateContent",{method:"POST",headers:{"Content-Type":"application/json","x-goog-api-key":env.GEMINI_API_KEY},body:JSON.stringify({systemInstruction:{parts:[{text:instruction}]},contents:[{role:"user",parts:[{text:userPrompt}]}],generationConfig:{temperature:0.2,maxOutputTokens:8192,responseMimeType:"application/json"}})});}catch{return reply({error:"Gemini-এর সঙ্গে সংযোগ করা যায়নি।"},502);}
+  const payload=await ai.json().catch(()=>({}));if(!ai.ok)return reply({error:ai.status===429?"Gemini quota শেষ হয়েছে। পরে চেষ্টা করুন।":"Gemini কোড তৈরি করতে পারেনি।"},ai.status===429?429:502);
+  const raw=payload.candidates?.[0]?.content?.parts?.map(x=>x.text||"").join("").trim();let proposal;try{proposal=JSON.parse(raw);}catch{return reply({error:"AI-এর কোড প্রস্তাব সঠিক JSON নয়। আবার চেষ্টা করুন।"},502);}
+  if(!proposal||!Array.isArray(proposal.files)||proposal.files.length<1||proposal.files.length>8)return reply({error:"AI কোনো গ্রহণযোগ্য ফাইল তৈরি করেনি।"},502);
+  let total=0;const seen=new Set();for(const file of proposal.files){if(!file||typeof file.path!=="string"||typeof file.content!=="string"||file.path.startsWith("/")||file.path.split("/").some(x=>!x||x===".."||x===".")||file.path.startsWith(".git/")||file.path.startsWith(".github/workflows/")||file.path.length>220||seen.has(file.path))return reply({error:"AI-এর প্রস্তাবে অনিরাপদ বা ভুল file path আছে।"},502);seen.add(file.path);total+=file.content.length;}
+  if(total>180000)return reply({error:"AI-এর প্রস্তাবিত কোডের আকার বেশি।"},502);
+  return reply({ok:true,summary:String(proposal.summary||"কোড পরিবর্তনের প্রস্তাব"),notes:Array.isArray(proposal.notes)?proposal.notes.slice(0,8):[],files:proposal.files,branch,repository:owner+"/"+repo});
+ }
+\n if(url.pathname==="/api/github/commit"&&req.method==="POST"){
+  const origin=req.headers.get("Origin");if(origin!==url.origin)return reply({error:"Cross-origin request blocked."},403);
   const s=await ghSession(req,env);if(!s)return reply({error:"প্রথমে GitHub সংযোগ করুন।"},401);let b;try{b=await req.json();}catch{return reply({error:"সঠিক JSON পাঠান।"},400);}
   const owner=String(b.owner||""),repo=String(b.repo||""),branch=String(b.branch||""),message=String(b.message||"").trim(),files=b.files;
   if(owner.toLowerCase()!==s.username.toLowerCase())return reply({error:"নিরাপত্তার জন্য আপাতত শুধু আপনার নিজের repository-তে লেখা যাবে।"},403);
