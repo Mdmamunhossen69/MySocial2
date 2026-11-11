@@ -27,25 +27,20 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Validate application and Hosting bundle
-        run: npm test
-
-      - name: Test Firestore Security Rules
-        run: npm run test:rules
-
-      - name: Verify Firebase Hosting credential exists
-        env:
-          FIREBASE_PRODUCTION_HOSTING_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_PRODUCTION_HOSTING_SERVICE_ACCOUNT }}
+      - name: Validate application and Firestore rules
         run: |
-          if [ -z "$FIREBASE_PRODUCTION_HOSTING_SERVICE_ACCOUNT" ]; then
-            echo "::error::Missing repository Actions secret FIREBASE_PRODUCTION_HOSTING_SERVICE_ACCOUNT."
-            echo "Add the Firebase Hosting service-account JSON as an encrypted repository secret."
-            exit 1
-          fi
+          npm test
+          npm run test:rules
 
-      - name: Deploy to MySocial2-Staging public Hosting site
-        uses: FirebaseExtended/action-hosting-deploy@v0
+      - name: Build public site with staging Firebase config
+        run: npm run build:hosting
+        env:
+          FIREBASE_TARGET: staging
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
         with:
-          firebaseServiceAccount: ${{ secrets.FIREBASE_PRODUCTION_HOSTING_SERVICE_ACCOUNT }}
-          projectId: mysocial2-staging
-          channelId: live
+          credentials_json: ${{ secrets.FIREBASE_PRODUCTION_HOSTING_SERVICE_ACCOUNT }}
+
+      - name: Deploy Hosting, Firestore rules, and indexes to MySocial2-Staging
+        run: npx firebase-tools deploy --only hosting,firestore:rules,firestore:indexes --project mysocial2-staging --non-interactive
