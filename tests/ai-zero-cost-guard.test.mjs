@@ -186,3 +186,38 @@ test("never attempts a paid provider when no verified free provider is configure
     globalThis.fetch = originalFetch;
   }
 });
+
+
+test("uses strict Groq JSON schema output for website manifests", async () => {
+  const originalFetch = globalThis.fetch;
+  let sentBody;
+  globalThis.fetch = async (_url, options) => {
+    sentBody = JSON.parse(options.body);
+    return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({
+      repositoryName: "sample-site",
+      summary: "A complete site",
+      files: [{ path: "index.html", content: "<h1>Hello</h1>" }, { path: "package.json", content: "{}" }],
+      testPlan: ["Check the homepage"]
+    }) } }] }), { status: 200 });
+  };
+  try {
+    const result = await generateGemini({
+      env: { GROQ_API_KEY: "test-groq-secret" },
+      systemInstruction: "Return only valid JSON.",
+      contents: [{ role: "user", parts: [{ text: "Build a site" }] }],
+      generationConfig: { maxOutputTokens: 16000, responseMimeType: "application/json" }
+    });
+    assert.equal(result.response.status, 200);
+    assert.equal(result.provider, "groq");
+    assert.equal(sentBody.reasoning_format, "hidden");
+    assert.equal(sentBody.max_completion_tokens, 16000);
+    assert.equal(sentBody.max_tokens, undefined);
+    assert.equal(sentBody.response_format.type, "json_schema");
+    assert.equal(sentBody.response_format.json_schema.strict, true);
+    assert.deepEqual(sentBody.response_format.json_schema.schema.required,
+      ["repositoryName", "summary", "files", "testPlan"]);
+    assert.equal(sentBody.response_format.json_schema.schema.additionalProperties, false);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});

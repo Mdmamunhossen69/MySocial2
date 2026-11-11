@@ -133,8 +133,38 @@ export async function generateGemini({ env, systemInstruction, contents, generat
     if (content) messages.push({ role, content });
   }
   const requestBody = { model, messages, temperature: generationConfig?.temperature ?? 0.2 };
-  if (generationConfig?.maxOutputTokens) requestBody.max_tokens = generationConfig.maxOutputTokens;
-  if (generationConfig?.responseMimeType === "application/json") requestBody.response_format = { type: "json_object" };
+  if (generationConfig?.maxOutputTokens) requestBody.max_completion_tokens = generationConfig.maxOutputTokens;
+  // GPT-OSS supports strict Structured Outputs. This avoids best-effort JSON
+  // validation failures when generating larger website project manifests.
+  if (generationConfig?.responseMimeType === "application/json") {
+    requestBody.reasoning_format = "hidden";
+    requestBody.response_format = {
+      type: "json_schema",
+      json_schema: {
+        name: "website_project_preview",
+        strict: true,
+        schema: {
+          type: "object",
+          properties: {
+            repositoryName: { type: "string" },
+            summary: { type: "string" },
+            files: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: { path: { type: "string" }, content: { type: "string" } },
+                required: ["path", "content"],
+                additionalProperties: false
+              }
+            },
+            testPlan: { type: "array", items: { type: "string" } }
+          },
+          required: ["repositoryName", "summary", "files", "testPlan"],
+          additionalProperties: false
+        }
+      }
+    };
+  }
   let response;
   try {
     response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
