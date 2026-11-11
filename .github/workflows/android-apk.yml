@@ -6,6 +6,7 @@ on:
     paths:
       - 'public/**'
       - 'src/**'
+      - 'migrations/**'
       - 'assets/**'
       - 'package.json'
       - 'capacitor.config.json'
