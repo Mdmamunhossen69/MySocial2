@@ -1,6 +1,7 @@
 name = "mysocial2"
 main = "src/index.js"
 compatibility_date = "2026-11-11"
+keep_vars = true
 
 [[d1_databases]]
 binding = "DB"
