@@ -1,7 +1,7 @@
-import { autonomousBuild } from "./autonomous.js";
+import { autonomousBuild, commitAutonomousBuild } from "./autonomous.js";
 import { generateGemini } from "./ai.js";
 const SYSTEM_INSTRUCTION = `আপনি KING CODER, একজন সহায়ক AI coding assistant। ব্যবহারকারীর ভাষায় উত্তর দিন; বাংলা হলে স্বাভাবিক, পরিষ্কার বাংলায় উত্তর দিন এবং সম্মানসূচক “আপনি” ব্যবহার করুন।
-আপনি KING CODER-এর AI সহকারী। ব্যবহারকারী যদি ওয়েবসাইট বা web app তৈরি করতে বলেন, UI স্বয়ংক্রিয়ভাবে /api/build workflow চালায়: এটি একটি নতুন private GitHub repository তৈরি করতে পারে অথবা নির্বাচিত নিজের repository-তে project commit করতে পারে। GitHub Actions-এ test/build/Wrangler dry-run চলে; Cloudflare deploy কেবল deploy credentials থাকলে হয়। আপনি কেবল বাস্তবে যাচাইকৃত ফলাফলই জানাবেন। কোনো কাজ সফল না হলে সফল হয়েছে বলবেন না। গোপন API key চাইবেন না এবং ব্যবহারকারীকে chat-এ key paste করতে বলবেন না।`;
+আপনি KING CODER-এর AI সহকারী। ব্যবহারকারী যদি ওয়েবসাইট বা web app তৈরি করতে বলেন, UI /api/build দিয়ে আগে read-only signed Preview তৈরি করে; অনুমোদনের পরে /api/build/commit আলাদা branch ও Pull Request তৈরি করে। কোনো Live Deployment স্বয়ংক্রিয়ভাবে হয় না। আপনি কেবল বাস্তবে যাচাইকৃত ফলাফলই জানাবেন। কোনো কাজ সফল না হলে সফল হয়েছে বলবেন না। গোপন API key চাইবেন না এবং ব্যবহারকারীকে chat-এ key paste করতে বলবেন না।`;
 const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store"}});
 function geminiFailure(payload,status){
  const providerError=payload&&typeof payload.error==="object"?payload.error:{};
@@ -76,12 +76,35 @@ async function ghRoutes(req,env,url){
   const session=await ghSession(req,env);
   if(!session)return reply({error:"বিনামূল্যে অ্যাকাউন্ট খুলতে প্রথমে GitHub দিয়ে নিবন্ধন / লগইন করুন।"},401);
   await ghTouchActivity(env,session,"build");
-  const quota=await ghConsumeQuota(env,session.user_id,"build",5);
-  if(!quota.ok)return reply({error:"আজকের বিনামূল্যের Website Build সীমা (৫টি) শেষ হয়েছে। আগামীকাল আবার চেষ্টা করুন।"},429);
   return autonomousBuild({request:req,env,url,session,ghApi,ghDecrypt,geminiFailure});
  }
 
- if(url.pathname==="/api/code/generate"&&req.method==="POST"){
+if(url.pathname==="/api/build/commit"&&req.method==="POST"){
+  const session=await ghSession(req,env);
+  if(!session)return reply({error:"প্রথমে GitHub দিয়ে লগইন করুন।"},401);
+  await ghTouchActivity(env,session,"build");
+  return commitAutonomousBuild({request:req,env,url,session,ghApi,ghDecrypt});
+ }
+
+ if(url.pathname==="/api/ai/team"&&req.method==="GET"){
+  const session=await ghSession(req,env);
+  if(!session)return reply({error:"AI Team status দেখতে GitHub দিয়ে লগইন করুন।"},401);
+  const today=new Date().toISOString().slice(0,10);
+  const usage=await env.DB.prepare("SELECT chat_count,build_count,code_count FROM user_usage WHERE user_id=?1 AND usage_date=?2").bind(String(session.user_id),today).first();
+  return reply({
+    ok:true,
+    team:[
+      {id:"gemini",name:"Gemini",role:"Manager ও Website Inspector",status:env.GEMINI_API_KEY?"available":"not_configured",runtime:"cloudflare_worker"},
+      {id:"codex",name:"OpenAI Codex",role:"Coding Agent",status:"not_connected",runtime:"requires_user_authorized_local_or_supported_codex_session",note:"ChatGPT Free Codex access সরাসরি Worker API credential নয়।"},
+      {id:"gemini-cli",name:"Gemini CLI",role:"Local Coding Assistant",status:"local_only",runtime:"requires_local_computer_agent"},
+      {id:"claude",name:"Claude",role:"Optional Coding Agent",status:"disabled",runtime:"no_paid_api_configured"}
+    ],
+    usage:{date:today,chat:usage?.chat_count||0,build:usage?.build_count||0,code:usage?.code_count||0,limits:{chat:100,build:5,code:20}},
+    costGuard:{paidFallback:false,automaticProviderUpgrade:false,providerBillingVerified:false,detail:"KING CODER কোনো পেইড fallback ব্যবহার করে না। Gemini API project-এর billing status Worker থেকে যাচাই করা যায় না; Google account billing আলাদাভাবে নিশ্চিত করতে হবে।"}
+  });
+ }
+
+  if(url.pathname==="/api/code/generate"&&req.method==="POST"){
   const origin=req.headers.get("Origin");if(origin!==url.origin)return reply({error:"Cross-origin request blocked."},403);
   const session=await ghSession(req,env);if(!session)return reply({error:"বিনামূল্যে অ্যাকাউন্ট খুলতে প্রথমে GitHub দিয়ে নিবন্ধন / লগইন করুন।"},401);
   await ghTouchActivity(env,session,"code");
