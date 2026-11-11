@@ -107,3 +107,82 @@ test("pauses Gemini after a Free-tier quota response and persists the cooldown",
     globalThis.fetch = originalFetch;
   }
 });
+
+
+test("uses Groq fallback when Gemini Free quota is exhausted", async () => {
+  const originalFetch = globalThis.fetch;
+  let groqCalls = 0;
+  let groqAuthorization = "";
+  const env = {
+    GEMINI_MODEL: "gemini-3.5-flash",
+    GEMINI_API_KEY: "test-gemini-key",
+    GEMINI_API_BILLING_STATUS: "verified_free",
+    GROQ_API_KEY: "test-groq-secret",
+    DB: {
+      prepare() {
+        return { first: async () => ({ blocked_until: Date.now() + 60_000, reason: "RESOURCE_EXHAUSTED" }) };
+      }
+    }
+  };
+  globalThis.fetch = async (url, options) => {
+    groqCalls++;
+    assert.equal(String(url), "https://api.groq.com/openai/v1/chat/completions");
+    groqAuthorization = options.headers.Authorization;
+    return new Response(JSON.stringify({ choices: [{ message: { content: "Groq fallback answer" } }] }), { status: 200 });
+  };
+  try {
+    const result = await generateGemini({
+      env, systemInstruction: "test",
+      contents: [{ role: "user", parts: [{ text: "hello" }] }],
+      generationConfig: { maxOutputTokens: 100 }
+    });
+    assert.equal(result.response.status, 200);
+    assert.equal(result.provider, "groq");
+    assert.equal(result.model, "openai/gpt-oss-120b");
+    assert.equal(groqCalls, 1);
+    assert.equal(groqAuthorization, "Bearer test-groq-secret");
+    const payload = await result.response.json();
+    assert.equal(payload.candidates[0].content.parts[0].text, "Groq fallback answer");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("uses Groq when Gemini is not verified, without calling Google", async () => {
+  const originalFetch = globalThis.fetch;
+  let requestedUrl = "";
+  globalThis.fetch = async (url) => {
+    requestedUrl = String(url);
+    return new Response(JSON.stringify({ choices: [{ message: { content: "Free Groq response" } }] }), { status: 200 });
+  };
+  try {
+    const result = await generateGemini({
+      env: { GEMINI_API_KEY: "test-key", GEMINI_API_BILLING_STATUS: "unverified", GROQ_API_KEY: "test-groq-secret" },
+      systemInstruction: "test",
+      contents: [{ role: "user", parts: [{ text: "hello" }] }]
+    });
+    assert.equal(result.response.status, 200);
+    assert.equal(result.provider, "groq");
+    assert.equal(requestedUrl, "https://api.groq.com/openai/v1/chat/completions");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("never attempts a paid provider when no verified free provider is configured", async () => {
+  const originalFetch = globalThis.fetch;
+  let called = false;
+  globalThis.fetch = async () => { called = true; throw new Error("No provider should be called"); };
+  try {
+    const result = await generateGemini({
+      env: { GEMINI_API_KEY: "test-key", GEMINI_API_BILLING_STATUS: "unverified" },
+      systemInstruction: "test",
+      contents: [{ role: "user", parts: [{ text: "hello" }] }]
+    });
+    assert.equal(result.response.status, 503);
+    assert.equal(result.provider, "none");
+    assert.equal(called, false);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});

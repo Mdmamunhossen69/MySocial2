@@ -40,7 +40,7 @@ async function rememberQuotaExhaustion(env, payload) {
  * Retries only transient network/5xx failures; quota/auth/client errors are never retried.
  * Does not introduce another provider, API key, secret, or paid fallback.
  */
-export async function generateGemini({ env, systemInstruction, contents, generationConfig }) {
+async function generateGeminiOnly({ env, systemInstruction, contents, generationConfig }) {
   const model = env.GEMINI_MODEL || "gemini-3.5-flash";
   // Fail closed until the owner verifies this exact project is on the Free tier.
   if (env.GEMINI_API_BILLING_STATUS !== "verified_free") {
@@ -98,4 +98,64 @@ export async function generateGemini({ env, systemInstruction, contents, generat
   }
 
   return { response: null, model, attempts: MAX_ATTEMPTS };
+}
+
+
+/**
+ * Zero-cost provider router: Gemini first, Groq only when Gemini is unavailable
+ * or its Free-tier quota is exhausted. Never retries a paid provider.
+ * Groq's OpenAI-compatible response is normalized to the Gemini shape used
+ * by the existing application routes.
+ */
+export async function generateGemini({ env, systemInstruction, contents, generationConfig }) {
+  const geminiEligible = Boolean(env.GEMINI_API_KEY && env.GEMINI_API_BILLING_STATUS === "verified_free");
+  if (geminiEligible) {
+    const gemini = await generateGeminiOnly({ env, systemInstruction, contents, generationConfig });
+    if (gemini.response?.ok) return { ...gemini, provider: "gemini" };
+    if (gemini.response && gemini.response.status !== 429) return { ...gemini, provider: "gemini" };
+    if (!env.GROQ_API_KEY) return { ...gemini, provider: "gemini" };
+  }
+  if (!env.GROQ_API_KEY) {
+    return {
+      response: new Response(JSON.stringify({ error: { message: geminiEligible
+        ? "Gemini Free quota exhausted and Groq is not configured. No paid fallback was attempted."
+        : "No verified free AI provider is configured. Add a Groq Secret or verify Gemini Free tier. No paid request was sent.",
+        status: "NO_FREE_PROVIDER" } }), { status: 503, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } }),
+      model: null, attempts: 0, blocked: true, provider: "none"
+    };
+  }
+  const model = env.GROQ_MODEL || "openai/gpt-oss-120b";
+  const messages = [];
+  if (systemInstruction) messages.push({ role: "system", content: systemInstruction });
+  for (const item of (Array.isArray(contents) ? contents : [])) {
+    const role = item?.role === "model" ? "assistant" : "user";
+    const content = Array.isArray(item?.parts) ? item.parts.map(part => String(part?.text || "")).join("\n") : "";
+    if (content) messages.push({ role, content });
+  }
+  const requestBody = { model, messages, temperature: generationConfig?.temperature ?? 0.2 };
+  if (generationConfig?.maxOutputTokens) requestBody.max_tokens = generationConfig.maxOutputTokens;
+  if (generationConfig?.responseMimeType === "application/json") requestBody.response_format = { type: "json_object" };
+  let response;
+  try {
+    response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + env.GROQ_API_KEY },
+      body: JSON.stringify(requestBody)
+    });
+  } catch {
+    return { response: new Response(JSON.stringify({ error: { message: "Groq Free API-তে সংযোগ করা যায়নি। কোনো paid fallback করা হয়নি।", status: "GROQ_NETWORK_ERROR" } }), { status: 502, headers: { "Content-Type": "application/json" } }), model, attempts: 1, provider: "groq" };
+  }
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const providerError = payload?.error || {};
+    const status = response.status;
+    const safeMessage = String(providerError.message || "Groq API request failed").replace(/Bearer\s+[^\s,;]+/gi, "Bearer [REDACTED]").slice(0, 400);
+    return { response: new Response(JSON.stringify({ error: { message: safeMessage, status: status === 429 ? "GROQ_RATE_LIMITED" : "GROQ_API_ERROR" } }), { status, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } }), model, attempts: 1, provider: "groq" };
+  }
+  const answer = payload?.choices?.[0]?.message?.content;
+  if (typeof answer !== "string" || !answer.trim()) {
+    return { response: new Response(JSON.stringify({ error: { message: "Groq থেকে খালি উত্তর এসেছে।", status: "EMPTY_RESPONSE" } }), { status: 502, headers: { "Content-Type": "application/json" } }), model, attempts: 1, provider: "groq" };
+  }
+  const normalized = { candidates: [{ content: { parts: [{ text: answer }] } }] };
+  return { response: new Response(JSON.stringify(normalized), { status: 200, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } }), model, attempts: 1, provider: "groq" };
 }
