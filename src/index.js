@@ -28,8 +28,29 @@ async function ghConsumeQuota(env,userId,kind,limit){
  return result?{ok:true,used:result.used,limit}:{ok:false,limit};
 }
 async function ghSession(req,env){if(!env.DB)return null;const raw=ghCookie(req);if(!raw)return null;const row=await env.DB.prepare("SELECT s.user_id,s.expires_at,c.username,c.encrypted_token FROM sessions s JOIN github_connections c ON c.user_id=s.user_id WHERE s.session_hash=?1").bind(await ghHash(raw)).first();return row&&row.expires_at>Date.now()?row:null;}
+const ADMIN_GITHUB_USERNAME="Mdmamunhossen69";
+async function ghTouchActivity(env,session,feature){await env.DB.prepare("INSERT INTO user_activity(user_id,last_seen,last_feature) VALUES(?1,?2,?3) ON CONFLICT(user_id) DO UPDATE SET last_seen=excluded.last_seen,last_feature=excluded.last_feature").bind(String(session.user_id),Date.now(),feature).run();}
 async function ghRoutes(req,env,url){
  const reply=(d,s=200,h={})=>new Response(JSON.stringify(d),{status:s,headers:{"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store",...h}});
+ if(url.pathname==="/api/activity/heartbeat"&&req.method==="POST"){
+  if(req.headers.get("Origin")!==url.origin)return reply({error:"Cross-origin request blocked."},403);
+  const session=await ghSession(req,env);if(!session)return reply({error:"প্রথমে GitHub দিয়ে লগইন করুন।"},401);
+  await ghTouchActivity(env,session,"online");return reply({ok:true});
+ }
+ if(url.pathname==="/api/admin/summary"&&req.method==="GET"){
+  const session=await ghSession(req,env);if(!session)return reply({error:"অ্যাডমিন ড্যাশবোর্ড দেখতে GitHub দিয়ে লগইন করুন।"},401);
+  if(session.username.toLowerCase()!==ADMIN_GITHUB_USERNAME.toLowerCase())return reply({error:"এই ড্যাশবোর্ড শুধু অনুমোদিত অ্যাডমিনের জন্য।"},403);
+  const now=Date.now(),activeSince=now-5*60*1000,today=new Date().toISOString().slice(0,10),weekStart=new Date(now-6*86400000).toISOString().slice(0,10);
+  const [users,active,usage,weekly,topUsers,recent]=await Promise.all([
+   env.DB.prepare("SELECT COUNT(*) AS total FROM github_connections").first(),
+   env.DB.prepare("SELECT COUNT(*) AS total FROM user_activity WHERE last_seen>=?1").bind(activeSince).first(),
+   env.DB.prepare("SELECT COUNT(DISTINCT user_id) AS users,COALESCE(SUM(chat_count),0) AS chats,COALESCE(SUM(build_count),0) AS builds,COALESCE(SUM(code_count),0) AS code FROM user_usage WHERE usage_date=?1").bind(today).first(),
+   env.DB.prepare("SELECT usage_date,COUNT(DISTINCT user_id) AS users,COALESCE(SUM(chat_count),0) AS chats,COALESCE(SUM(build_count),0) AS builds,COALESCE(SUM(code_count),0) AS code FROM user_usage WHERE usage_date>=?1 GROUP BY usage_date ORDER BY usage_date DESC LIMIT 7").bind(weekStart).all(),
+   env.DB.prepare("SELECT c.username,u.chat_count AS chats,u.build_count AS builds,u.code_count AS code,(u.chat_count+u.build_count+u.code_count) AS total FROM user_usage u JOIN github_connections c ON c.user_id=u.user_id WHERE u.usage_date=?1 ORDER BY total DESC LIMIT 100").bind(today).all(),
+   env.DB.prepare("SELECT c.username,a.last_seen,a.last_feature FROM user_activity a JOIN github_connections c ON c.user_id=a.user_id WHERE a.last_seen>=?1 ORDER BY a.last_seen DESC LIMIT 30").bind(now-86400000).all()
+  ]);
+  return reply({ok:true,generatedAt:now,totalUsers:users?.total||0,activeNow:active?.total||0,today:{date:today,users:usage?.users||0,chats:usage?.chats||0,builds:usage?.builds||0,code:usage?.code||0},weekly:weekly.results||[],topUsers:topUsers.results||[],recentActivity:recent.results||[]});
+ }
  if(url.pathname==="/api/github/login"&&req.method==="GET"){
   if(!env.DB||!env.GITHUB_CLIENT_ID||!env.GITHUB_CLIENT_SECRET)return reply({error:"GitHub OAuth এখনো কনফিগার করা হয়নি।"},503);
   const state=ghRandom();await env.DB.prepare("INSERT INTO oauth_states(state_hash,expires_at) VALUES(?1,?2)").bind(await ghHash(state),Date.now()+600000).run();
@@ -53,6 +74,7 @@ async function ghRoutes(req,env,url){
  if(url.pathname==="/api/build"&&req.method==="POST"){
   const session=await ghSession(req,env);
   if(!session)return reply({error:"বিনামূল্যে অ্যাকাউন্ট খুলতে প্রথমে GitHub দিয়ে নিবন্ধন / লগইন করুন।"},401);
+  await ghTouchActivity(env,session,"build");
   const quota=await ghConsumeQuota(env,session.user_id,"build",5);
   if(!quota.ok)return reply({error:"আজকের বিনামূল্যের Website Build সীমা (৫টি) শেষ হয়েছে। আগামীকাল আবার চেষ্টা করুন।"},429);
   return autonomousBuild({request:req,env,url,session,ghApi,ghDecrypt,geminiFailure});
@@ -61,6 +83,7 @@ async function ghRoutes(req,env,url){
  if(url.pathname==="/api/code/generate"&&req.method==="POST"){
   const origin=req.headers.get("Origin");if(origin!==url.origin)return reply({error:"Cross-origin request blocked."},403);
   const session=await ghSession(req,env);if(!session)return reply({error:"বিনামূল্যে অ্যাকাউন্ট খুলতে প্রথমে GitHub দিয়ে নিবন্ধন / লগইন করুন।"},401);
+  await ghTouchActivity(env,session,"code");
   const quota=await ghConsumeQuota(env,session.user_id,"code",20);if(!quota.ok)return reply({error:"আজকের বিনামূল্যের Code Generation সীমা (২০টি) শেষ হয়েছে। আগামীকাল আবার চেষ্টা করুন।"},429);
   if(!env.GEMINI_API_KEY)return reply({error:"Gemini API secret নেই।"},503);
   let body;try{body=await req.json();}catch{return reply({error:"সঠিক JSON পাঠান।"},400);}
@@ -111,6 +134,7 @@ export default {
    if(request.headers.get("Origin")!==url.origin)return json({error:"Cross-origin request blocked."},403);
    const session=await ghSession(request,env);
    if(!session)return json({error:"বিনামূল্যে অ্যাকাউন্ট খুলতে প্রথমে GitHub দিয়ে নিবন্ধন / লগইন করুন।"},401);
+   await ghTouchActivity(env,session,"chat");
    const quota=await ghConsumeQuota(env,session.user_id,"chat",100);
    if(!quota.ok)return json({error:"আজকের বিনামূল্যের AI Chat সীমা (১০০টি বার্তা) শেষ হয়েছে। আগামীকাল আবার চেষ্টা করুন।"},429);
    if(!env.GEMINI_API_KEY)return json({error:"সার্ভারে GEMINI_API_KEY secret সেট করা নেই।"},503);
