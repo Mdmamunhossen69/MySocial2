@@ -45,5 +45,7 @@ jobs:
           set -euo pipefail
           curl --retry 10 --retry-delay 3 --retry-all-errors -fsS "$WORKER_URL/api/health" -o /tmp/king-coder-health.json
           node -e 'const h=require("/tmp/king-coder-health.json"); for (const k of ["ok","configured","geminiApiKeyConfigured","geminiBillingVerified","githubConfigured","databaseConfigured"]) if (h[k] !== true) throw new Error("Production health check failed: "+k);'
-          curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$WORKER_URL/" | grep -q "KING CODER"
-          curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$WORKER_URL/admin.html" | grep -q "KING CODER"
+          curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$WORKER_URL/" -o /tmp/king-coder-index.html
+          grep -q "KING CODER" /tmp/king-coder-index.html
+          curl --retry 5 --retry-delay 2 --retry-all-errors -fsS "$WORKER_URL/admin.html" -o /tmp/king-coder-admin.html
+          grep -q "KING CODER" /tmp/king-coder-admin.html
