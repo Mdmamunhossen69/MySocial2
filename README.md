@@ -20,6 +20,17 @@ A mobile-first Bengali-friendly AI coding assistant interface with a Cloudflare 
 
 You can create a Gemini API key in Google AI Studio: https://aistudio.google.com/app/apikey
 
+## GitHub Actions deployment (works without a local computer)
+1. Create a Cloudflare account and note the account ID from the Cloudflare dashboard.
+2. Create a Cloudflare API token with permission to edit Workers.
+3. In GitHub, open **Settings → Secrets and variables → Actions** and add:
+   - `CLOUDFLARE_API_TOKEN`
+   - `CLOUDFLARE_ACCOUNT_ID`
+4. Add the Gemini key to the deployed Worker as a secret in Cloudflare Dashboard → Workers & Pages → king-coder → Settings → Variables and Secrets → Add secret named `GEMINI_API_KEY`.
+5. Push any new commit to `main`, or run the **Deploy KING CODER to Cloudflare Workers** workflow from the GitHub Actions tab.
+
+The deployment workflow safely skips deployment until the Cloudflare GitHub secrets are configured. Do not add the Gemini key as a public repository file.
+
 ## Local development
 ```sh
 npx wrangler dev
