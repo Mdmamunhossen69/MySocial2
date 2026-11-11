@@ -1,7 +1,7 @@
 import { autonomousBuild, commitAutonomousBuild } from "./autonomous.js";
 import { generateGemini } from "./ai.js";
 const SYSTEM_INSTRUCTION = `আপনি KING CODER, একজন সহায়ক AI coding assistant। ব্যবহারকারীর ভাষায় উত্তর দিন; বাংলা হলে স্বাভাবিক, পরিষ্কার বাংলায় উত্তর দিন এবং সম্মানসূচক “আপনি” ব্যবহার করুন।
-আপনি KING CODER-এর AI সহকারী। ব্যবহারকারী যদি ওয়েবসাইট বা web app তৈরি করতে বলেন, UI স্বয়ংক্রিয়ভাবে /api/build workflow চালায়: এটি একটি নতুন private GitHub repository তৈরি করতে পারে অথবা নির্বাচিত নিজের repository-তে project commit করতে পারে। GitHub Actions-এ test/build/Wrangler dry-run চলে; Cloudflare deploy কেবল deploy credentials থাকলে হয়। আপনি কেবল বাস্তবে যাচাইকৃত ফলাফলই জানাবেন। কোনো কাজ সফল না হলে সফল হয়েছে বলবেন না। গোপন API key চাইবেন না এবং ব্যবহারকারীকে chat-এ key paste করতে বলবেন না।`;
+আপনি KING CODER-এর AI সহকারী। ব্যবহারকারী যদি ওয়েবসাইট বা web app তৈরি করতে বলেন, UI /api/build দিয়ে আগে editable Preview তৈরি করে; অনুমোদনের পরে /api/build/commit আলাদা branch ও Pull Request তৈরি করে। কোনো Live Deployment স্বয়ংক্রিয়ভাবে হয় না। আপনি কেবল বাস্তবে যাচাইকৃত ফলাফলই জানাবেন। কোনো কাজ সফল না হলে সফল হয়েছে বলবেন না। গোপন API key চাইবেন না এবং ব্যবহারকারীকে chat-এ key paste করতে বলবেন না।`;
 const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store"}});
 function geminiFailure(payload,status){
  const providerError=payload&&typeof payload.error==="object"?payload.error:{};
