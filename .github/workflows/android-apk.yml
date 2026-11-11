@@ -6,6 +6,7 @@ on:
     paths:
       - 'public/**'
       - 'src/**'
+      - 'assets/**'
       - 'package.json'
       - 'capacitor.config.json'
       - '.github/workflows/android-apk.yml'
@@ -56,6 +57,31 @@ jobs:
           if "android.permission.RECORD_AUDIO" not in s:
               s = s.replace(marker, marker + "\n    " + permissions, 1)
           p.write_text(s)
+          PY
+
+      - name: Generate KING CODER launcher icons
+        run: |
+          python3 -m pip install --quiet cairosvg
+          mkdir -p android/app/src/main/res/mipmap-anydpi-v26
+          python3 - <<'PY'
+          from pathlib import Path
+          import cairosvg
+          svg = Path("assets/king-coder-icon.svg").read_bytes()
+          root = Path("android/app/src/main/res")
+          for density, size in [("mdpi",48),("hdpi",72),("xhdpi",96),("xxhdpi",144),("xxxhdpi",192)]:
+              folder = root / f"mipmap-{density}"
+              folder.mkdir(parents=True, exist_ok=True)
+              for name in ["ic_launcher.png","ic_launcher_round.png","ic_launcher_foreground.png"]:
+                  cairosvg.svg2png(bytestring=svg,write_to=str(folder/name),output_width=size,output_height=size)
+          adaptive = '''<?xml version="1.0" encoding="utf-8"?>
+          <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+              <background android:drawable="@android:color/black"/>
+              <foreground android:drawable="@mipmap/ic_launcher_foreground"/>
+          </adaptive-icon>
+          '''
+          anydpi = root / "mipmap-anydpi-v26"
+          (anydpi / "ic_launcher.xml").write_text(adaptive)
+          (anydpi / "ic_launcher_round.xml").write_text(adaptive)
           PY
 
       - name: Build debug APK
