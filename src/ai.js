@@ -9,6 +9,11 @@ const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
  */
 export async function generateGemini({ env, systemInstruction, contents, generationConfig }) {
   const model = env.GEMINI_MODEL || "gemini-3.5-flash";
+  // Fail closed until the owner verifies this exact project is on the Free tier.
+  if (env.GEMINI_API_BILLING_STATUS !== "verified_free") {
+    const blocked = { error: { message: "Gemini API is blocked until the Google AI Studio project is verified as Free tier. No request was sent.", status: "BILLING_UNVERIFIED" } };
+    return { response: new Response(JSON.stringify(blocked), { status: 503, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } }), model, attempts: 0, blocked: true };
+  }
   const url = "https://generativelanguage.googleapis.com/v1beta/models/" +
     encodeURIComponent(model) + ":generateContent";
   const body = JSON.stringify({
