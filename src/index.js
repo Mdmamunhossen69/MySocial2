@@ -96,13 +96,14 @@ if(url.pathname==="/api/build/commit"&&req.method==="POST"){
   return reply({
     ok:true,
     team:[
-      {id:"gemini",name:"Gemini API",role:"Manager ও Website Inspector",status:!env.GEMINI_API_KEY?"not_configured":!geminiFreeVerified?"billing_unverified_blocked":providerQuota.blocked?"quota_exhausted":"available",runtime:"cloudflare_worker",billingStatus:geminiFreeVerified?"verified_free":"unverified",quotaBlocked:providerQuota.blocked,retryAt:providerQuota.blocked?providerQuota.blockedUntil:null},
+      {id:"gemini",name:"Gemini API",role:"Primary AI Manager",status:!env.GEMINI_API_KEY?"not_configured":!geminiFreeVerified?"billing_unverified_blocked":providerQuota.blocked?"quota_exhausted":"available",runtime:"cloudflare_worker",billingStatus:geminiFreeVerified?"verified_free":"unverified",quotaBlocked:providerQuota.blocked,retryAt:providerQuota.blocked?providerQuota.blockedUntil:null},
+      {id:"groq",name:"Groq Free API",role:"Automatic free-tier fallback for Chat, Code ও Website Build",status:env.GROQ_API_KEY?"available":"not_configured",runtime:"cloudflare_worker",billingStatus:"free_quota_only",note:"Uses GROQ_API_KEY Secret. No paid fallback or automatic upgrade."},
       {id:"codex",name:"OpenAI Codex CLI",role:"Coding Agent",status:"not_connected",runtime:"requires_user_authorized_local_or_supported_codex_session",note:"ChatGPT Free sign-in can provide limited Codex access; it is not a Worker API credential and local OAuth is still required."},
       {id:"antigravity-cli",name:"Google Antigravity CLI",role:"Local Coding Assistant",status:"local_only",runtime:"requires_local_computer_agent",note:"Antigravity CLI is the current individual-account replacement for Gemini CLI; local Google sign-in is required."},
       {id:"claude",name:"Claude",role:"Optional Coding Agent",status:"disabled",runtime:"no_paid_api_configured"}
     ],
     usage:{date:today,chat:usage?.chat_count||0,build:usage?.build_count||0,code:usage?.code_count||0,limits:{chat:100,build:5,code:20}},
-    costGuard:{paidFallback:false,automaticProviderUpgrade:false,providerBillingVerified:geminiFreeVerified,geminiApiBlocked:!geminiFreeVerified||providerQuota.blocked,quotaExhausted:providerQuota.blocked,retryAt:providerQuota.blocked?providerQuota.blockedUntil:null,detail:providerQuota.blocked?"Gemini Free Tier quota exhausted. Requests are paused until the cooldown expires; no paid fallback or automatic upgrade.":geminiFreeVerified?"Free-tier project verification is configured. Remaining provider quota is not guaranteed. No paid fallback is configured.":"Gemini API requests are blocked by default. Verify the exact project is Free tier in Google AI Studio before setting GEMINI_API_BILLING_STATUS=verified_free. No paid fallback is configured."}
+    costGuard:{paidFallback:false,automaticProviderUpgrade:false,providerBillingVerified:geminiFreeVerified,groqConfigured:Boolean(env.GROQ_API_KEY),geminiApiBlocked:!geminiFreeVerified||providerQuota.blocked,quotaExhausted:providerQuota.blocked,retryAt:providerQuota.blocked?providerQuota.blockedUntil:null,detail:providerQuota.blocked?"Gemini Free Tier quota exhausted. Requests are paused until the cooldown expires; no paid fallback or automatic upgrade.":geminiFreeVerified?"Free-tier project verification is configured. Remaining provider quota is not guaranteed. No paid fallback is configured.":"Gemini API requests are blocked by default. Verify the exact project is Free tier in Google AI Studio before setting GEMINI_API_BILLING_STATUS=verified_free. No paid fallback is configured."}
   });
  }
 
@@ -152,7 +153,7 @@ export default {
  async fetch(request,env){
   const url=new URL(request.url);
   if(url.pathname==="/api/health"&&request.method==="GET"){
-   return json({ok:true,service:"KING CODER API",configured:Boolean(env.GEMINI_API_KEY&&env.GEMINI_API_BILLING_STATUS==="verified_free"),geminiApiKeyConfigured:Boolean(env.GEMINI_API_KEY),geminiBillingVerified:env.GEMINI_API_BILLING_STATUS==="verified_free",githubConfigured:Boolean(env.DB&&env.GITHUB_CLIENT_ID&&env.GITHUB_CLIENT_SECRET),databaseConfigured:Boolean(env.DB),model:env.GEMINI_MODEL||"gemini-3.5-flash"});
+   return json({ok:true,service:"KING CODER API",configured:Boolean(env.GEMINI_API_KEY&&env.GEMINI_API_BILLING_STATUS==="verified_free"),geminiApiKeyConfigured:Boolean(env.GEMINI_API_KEY),geminiBillingVerified:env.GEMINI_API_BILLING_STATUS==="verified_free",groqApiKeyConfigured:Boolean(env.GROQ_API_KEY),githubConfigured:Boolean(env.DB&&env.GITHUB_CLIENT_ID&&env.GITHUB_CLIENT_SECRET),databaseConfigured:Boolean(env.DB),model:env.GEMINI_MODEL||"gemini-3.5-flash"});
   }
   const githubResponse=await ghRoutes(request,env,url);if(githubResponse)return githubResponse;
   if(url.pathname==="/api/chat"){
