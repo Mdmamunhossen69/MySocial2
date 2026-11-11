@@ -15,7 +15,7 @@ Bengali-friendly AI coding assistant prototype using Cloudflare Workers, Gemini,
 2. Add a D1 binding named `DB` to the Worker.
 3. Create a GitHub OAuth App. Authorization callback URL:
    `https://mysocial2.mdmamunhossenlimon7.workers.dev/api/github/callback`
-4. Add Production Worker secrets: `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, and `TOKEN_ENCRYPTION_KEY`. The encryption key must be base64 encoding of exactly 32 random bytes.
+4. Add Production Worker secrets: `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, The OAuth client secret is used as the HKDF root to derive the AES-GCM token-encryption key; no extra encryption secret is needed.
 5. Keep the existing `GEMINI_API_KEY` secret. Redeploy after adding bindings/secrets.
 6. Open `/api/github/login` on the live site to connect.
 
