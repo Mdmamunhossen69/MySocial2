@@ -92,7 +92,7 @@ function renderLivePreview(data){
  documentHtml=documentHtml.replace(/<script\b([^>]*?)src\s*=\s*(['"])([^'"]+)\2([^>]*)>\s*<\/script>/gi,(tag,before,quote,src,after)=>{
   const path=resolvePath(src),js=path&&files.get(path);
   if(js===undefined)return '';
-  return '<script'+before+after+'>'+js.replace(/<\/script/gi,'<\\/script')+'</script>';
+  return '<script'+before+after+'>'+js.replace(/<\/script/gi,'<\\/script')+'<\\/script>';
  });
  const csp="<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; img-src data: blob:; style-src 'unsafe-inline' data:; script-src 'unsafe-inline'; font-src data:; connect-src 'none'; frame-src 'none'; object-src 'none'; form-action 'none'; base-uri 'none\">";
  if(/<head\b[^>]*>/i.test(documentHtml))documentHtml=documentHtml.replace(/<head\b[^>]*>/i,match=>match+csp);else documentHtml=csp+documentHtml;
