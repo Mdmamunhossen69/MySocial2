@@ -1,6 +1,6 @@
 import { autonomousBuild, commitAutonomousBuild } from "./autonomous.js";
-import { generateGemini, getGeminiQuotaState } from "./ai.js";
-const SYSTEM_INSTRUCTION = `আপনি KING CODER, একজন সহায়ক AI coding assistant। ব্যবহারকারীর ভাষায় উত্তর দিন; বাংলা হলে স্বাভাবিক, পরিষ্কার বাংলায় উত্তর দিন এবং সম্মানসূচক “আপনি” ব্যবহার করুন।
+import { generateGemini } from "./ai.js";
+const SYSTEM_INSTRUCTION = `আপনি KING CODER, একজন সহায়ক AI coding assistant। ব্যবহারকারীর ভাষায় উত্তর দিন; বাংলা হলে স্বাভাবিক, পরিষ্কার বাংলায় উত্তর দিন এবং সম্মানসূচক “আপনি” ব্যবহার করুন। উত্তর যেন স্বাভাবিক কথোপকথনের মতো হয়: প্রশ্নের সরাসরি উত্তর দিন, প্রয়োজন হলে সংক্ষিপ্ত শিরোনাম ও বুলেট ব্যবহার করুন, ধাপে ধাপে ব্যাখ্যা দিন, আগের কথোপকথনের প্রাসঙ্গিক তথ্য মনে রেখে উত্তর দিন, অকারণে একই কথা পুনরাবৃত্তি বা অতিরিক্ত সংক্ষিপ্ত উত্তর দেবেন না।
 আপনি KING CODER-এর AI সহকারী। ব্যবহারকারী যদি ওয়েবসাইট বা web app তৈরি করতে বলেন, UI /api/build দিয়ে আগে read-only signed Preview তৈরি করে; অনুমোদনের পরে /api/build/commit আলাদা branch ও Pull Request তৈরি করে। কোনো Live Deployment স্বয়ংক্রিয়ভাবে হয় না। আপনি কেবল বাস্তবে যাচাইকৃত ফলাফলই জানাবেন। কোনো কাজ সফল না হলে সফল হয়েছে বলবেন না। গোপন API key চাইবেন না এবং ব্যবহারকারীকে chat-এ key paste করতে বলবেন না।`;
 const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store"}});
 function geminiFailure(payload,status,provider="gemini"){
@@ -52,7 +52,44 @@ async function ghRoutes(req,env,url){
   ]);
   return reply({ok:true,generatedAt:now,totalUsers:users?.total||0,activeNow:active?.total||0,today:{date:today,users:usage?.users||0,chats:usage?.chats||0,builds:usage?.builds||0,code:usage?.code||0},weekly:weekly.results||[],topUsers:topUsers.results||[],recentActivity:recent.results||[]});
  }
- if(url.pathname==="/api/github/login"&&req.method==="GET"){
+
+ if(url.pathname==="/api/chats"&&req.method==="GET"){
+  const session=await ghSession(req,env);if(!session)return reply({error:"প্রথমে GitHub দিয়ে লগইন করুন।"},401);
+  const rows=await env.DB.prepare("SELECT id,title,created_at,updated_at FROM chat_conversations WHERE user_id=?1 ORDER BY updated_at DESC LIMIT 100").bind(String(session.user_id)).all();
+  return reply({chats:rows.results||[]});
+ }
+ if(url.pathname==="/api/chats"&&req.method==="POST"){
+  if(req.headers.get("Origin")!==url.origin)return reply({error:"Cross-origin request blocked."},403);
+  const session=await ghSession(req,env);if(!session)return reply({error:"প্রথমে GitHub দিয়ে লগইন করুন।"},401);
+  const id=crypto.randomUUID(),now=Date.now();
+  await env.DB.prepare("INSERT INTO chat_conversations(id,user_id,title,created_at,updated_at) VALUES(?1,?2,'নতুন চ্যাট',?3,?3)").bind(id,String(session.user_id),now).run();
+  return reply({chat:{id,title:"নতুন চ্যাট",created_at:now,updated_at:now}},201);
+ }
+ const chatMatch=url.pathname.match(new RegExp("^/api/chats/([0-9a-f-]{36})(/messages)?$","i"));
+ if(chatMatch&&req.method==="GET"){
+  const session=await ghSession(req,env);if(!session)return reply({error:"প্রথমে GitHub দিয়ে লগইন করুন।"},401);
+  const chat=await env.DB.prepare("SELECT id,title,created_at,updated_at FROM chat_conversations WHERE id=?1 AND user_id=?2").bind(chatMatch[1],String(session.user_id)).first();
+  if(!chat)return reply({error:"এই কথোপকথন পাওয়া যায়নি।"},404);
+  const messages=await env.DB.prepare("SELECT id,role,content,created_at FROM chat_messages WHERE chat_id=?1 AND user_id=?2 ORDER BY created_at ASC,id ASC").bind(chat.id,String(session.user_id)).all();
+  return reply({chat,messages:messages.results||[]});
+ }
+ if(chatMatch&&req.method==="PATCH"&&!chatMatch[2]){
+  if(req.headers.get("Origin")!==url.origin)return reply({error:"Cross-origin request blocked."},403);
+  const session=await ghSession(req,env);if(!session)return reply({error:"প্রথমে GitHub দিয়ে লগইন করুন।"},401);
+  let body;try{body=await req.json();}catch{return reply({error:"সঠিক JSON পাঠান।"},400);}
+  const title=String(body.title||"").trim().slice(0,80);if(!title)return reply({error:"চ্যাটের নাম খালি রাখা যাবে না।"},400);
+  const result=await env.DB.prepare("UPDATE chat_conversations SET title=?1,updated_at=?2 WHERE id=?3 AND user_id=?4").bind(title,Date.now(),chatMatch[1],String(session.user_id)).run();
+  if(!result.meta?.changes)return reply({error:"এই কথোপকথন পাওয়া যায়নি।"},404);
+  return reply({ok:true,title});
+ }
+ if(chatMatch&&req.method==="DELETE"&&!chatMatch[2]){
+  if(req.headers.get("Origin")!==url.origin)return reply({error:"Cross-origin request blocked."},403);
+  const session=await ghSession(req,env);if(!session)return reply({error:"প্রথমে GitHub দিয়ে লগইন করুন।"},401);
+  const result=await env.DB.prepare("DELETE FROM chat_conversations WHERE id=?1 AND user_id=?2").bind(chatMatch[1],String(session.user_id)).run();
+  if(!result.meta?.changes)return reply({error:"এই কথোপকথন পাওয়া যায়নি।"},404);
+  return reply({ok:true});
+ }
+\n if(url.pathname==="/api/github/login"&&req.method==="GET"){
   if(!env.DB||!env.GITHUB_CLIENT_ID||!env.GITHUB_CLIENT_SECRET)return reply({error:"GitHub OAuth এখনো কনফিগার করা হয়নি।"},503);
   const state=ghRandom();await env.DB.prepare("INSERT INTO oauth_states(state_hash,expires_at) VALUES(?1,?2)").bind(await ghHash(state),Date.now()+600000).run();
   const target=new URL("https://github.com/login/oauth/authorize");target.searchParams.set("client_id",env.GITHUB_CLIENT_ID);target.searchParams.set("redirect_uri",url.origin+"/api/github/callback");target.searchParams.set("scope","repo read:user");target.searchParams.set("state",state);return new Response(null,{status:302,headers:{"Location":target.toString(),"Set-Cookie":ghStateCookie(state,600),"Cache-Control":"no-store"}});
@@ -86,27 +123,7 @@ if(url.pathname==="/api/build/commit"&&req.method==="POST"){
   return commitAutonomousBuild({request:req,env,url,session,ghApi,ghDecrypt});
  }
 
- if(url.pathname==="/api/ai/team"&&req.method==="GET"){
-  const session=await ghSession(req,env);
-  if(!session)return reply({error:"AI Team status দেখতে GitHub দিয়ে লগইন করুন।"},401);
-  const today=new Date().toISOString().slice(0,10);
-  const usage=await env.DB.prepare("SELECT chat_count,build_count,code_count FROM user_usage WHERE user_id=?1 AND usage_date=?2").bind(String(session.user_id),today).first();
-  const geminiFreeVerified=env.GEMINI_API_BILLING_STATUS==="verified_free";
-  const providerQuota=await getGeminiQuotaState(env);
-  return reply({
-    ok:true,
-    team:[
-      {id:"gemini",name:"Gemini API",role:"Primary AI Manager",status:!env.GEMINI_API_KEY?"not_configured":!geminiFreeVerified?"billing_unverified_blocked":providerQuota.blocked?"quota_exhausted":"available",runtime:"cloudflare_worker",billingStatus:geminiFreeVerified?"verified_free":"unverified",quotaBlocked:providerQuota.blocked,retryAt:providerQuota.blocked?providerQuota.blockedUntil:null},
-      {id:"groq",name:"Groq Free API",role:"Automatic free-tier fallback for Chat, Code ও Website Build",status:env.GROQ_API_KEY?"available":"not_configured",runtime:"cloudflare_worker",billingStatus:"free_quota_only",note:"Uses GROQ_API_KEY Secret. No paid fallback or automatic upgrade."},
-      {id:"codex",name:"OpenAI Codex CLI",role:"Coding Agent",status:"not_connected",runtime:"requires_user_authorized_local_or_supported_codex_session",note:"ChatGPT Free sign-in can provide limited Codex access; it is not a Worker API credential and local OAuth is still required."},
-      {id:"antigravity-cli",name:"Google Antigravity CLI",role:"Local Coding Assistant",status:"local_only",runtime:"requires_local_computer_agent",note:"Antigravity CLI is the current individual-account replacement for Gemini CLI; local Google sign-in is required."},
-      {id:"claude",name:"Claude",role:"Optional Coding Agent",status:"disabled",runtime:"no_paid_api_configured"}
-    ],
-    usage:{date:today,chat:usage?.chat_count||0,build:usage?.build_count||0,code:usage?.code_count||0,limits:{chat:100,build:5,code:20}},
-    costGuard:{paidFallback:false,automaticProviderUpgrade:false,providerBillingVerified:geminiFreeVerified,groqConfigured:Boolean(env.GROQ_API_KEY),geminiApiBlocked:!geminiFreeVerified||providerQuota.blocked,quotaExhausted:providerQuota.blocked,retryAt:providerQuota.blocked?providerQuota.blockedUntil:null,detail:providerQuota.blocked?"Gemini Free Tier quota exhausted. Requests are paused until the cooldown expires; no paid fallback or automatic upgrade.":geminiFreeVerified?"Free-tier project verification is configured. Remaining provider quota is not guaranteed. No paid fallback is configured.":"Gemini API requests are blocked by default. Verify the exact project is Free tier in Google AI Studio before setting GEMINI_API_BILLING_STATUS=verified_free. No paid fallback is configured."}
-  });
- }
-
+ 
   if(url.pathname==="/api/code/generate"&&req.method==="POST"){
   const origin=req.headers.get("Origin");if(origin!==url.origin)return reply({error:"Cross-origin request blocked."},403);
   const session=await ghSession(req,env);if(!session)return reply({error:"বিনামূল্যে অ্যাকাউন্ট খুলতে প্রথমে GitHub দিয়ে নিবন্ধন / লগইন করুন।"},401);
@@ -162,38 +179,32 @@ export default {
    const session=await ghSession(request,env);
    if(!session)return json({error:"বিনামূল্যে অ্যাকাউন্ট খুলতে প্রথমে GitHub দিয়ে নিবন্ধন / লগইন করুন।"},401);
    await ghTouchActivity(env,session,"chat");
+   let body;try{const raw=await request.text();if(raw.length>50000)return json({error:"অনুরোধটি অনেক বড়।"},413);body=JSON.parse(raw);}catch{return json({error:"সঠিক JSON পাঠান।"},400);}
+   const message=typeof body.message==="string"?body.message.trim():"",chatId=String(body.chatId||"");
+   if(!message||message.length>12000)return json({error:"বার্তাটি খালি অথবা ১২,০০০ অক্ষরের বেশি।"},400);
+   if(!/^[0-9a-f-]{36}$/i.test(chatId))return json({error:"একটি বৈধ কথোপকথন নির্বাচন করুন।"},400);
+   const chat=await env.DB.prepare("SELECT id,title FROM chat_conversations WHERE id=?1 AND user_id=?2").bind(chatId,String(session.user_id)).first();
+   if(!chat)return json({error:"কথোপকথনটি পাওয়া যায়নি। নতুন চ্যাট শুরু করুন।"},404);
    const quota=await ghConsumeQuota(env,session.user_id,"chat",100);
    if(!quota.ok)return json({error:"আজকের বিনামূল্যের AI Chat সীমা (১০০টি বার্তা) শেষ হয়েছে। আগামীকাল আবার চেষ্টা করুন।"},429);
-   let body;
-   try{
-    const raw=await request.text();
-    if(raw.length>50000)return json({error:"অনুরোধটি অনেক বড়।"},413);
-    body=JSON.parse(raw);
-   }catch{return json({error:"সঠিক JSON পাঠান।"},400);}
-   const message=typeof body.message==="string"?body.message.trim():"";
-   if(!message||message.length>12000)return json({error:"বার্তাটি খালি অথবা ১২,০০০ অক্ষরের বেশি।"},400);
-   const history=Array.isArray(body.history)?body.history.slice(-16):[];
-   const contents=[];
-   for(const item of history){
-    if(!item||!["user","assistant"].includes(item.role)||typeof item.text!=="string")continue;
-    const text=item.text.trim().slice(0,12000);
-    if(text)contents.push({role:item.role==="assistant"?"model":"user",parts:[{text}]});
-   }
-   if(contents.length===0||contents[contents.length-1].role!=="user"||contents[contents.length-1].parts[0].text!==message){
-    contents.push({role:"user",parts:[{text:message}]});
-   }
+   const saved=await env.DB.prepare("SELECT role,content FROM chat_messages WHERE chat_id=?1 AND user_id=?2 ORDER BY created_at DESC,id DESC LIMIT 16").bind(chatId,String(session.user_id)).all();
+   const contents=(saved.results||[]).reverse().map(item=>({role:item.role==="assistant"?"model":"user",parts:[{text:String(item.content).slice(0,12000)}]}));
+   contents.push({role:"user",parts:[{text:message}]});
    const {response:upstream,model,attempts,provider}=await generateGemini({env,systemInstruction:SYSTEM_INSTRUCTION,contents,generationConfig:{maxOutputTokens:4096}});
-   if(!upstream)return json({error:"Gemini-এর সঙ্গে সংযোগ করা যায়নি। ৩ বার চেষ্টা করেও সংযোগ হয়নি।",attempts},502);
+   if(!upstream)return json({error:"AI provider-এর সঙ্গে সংযোগ করা যায়নি। ৩ বার চেষ্টা করেও সংযোগ হয়নি।",attempts},502);
    const payload=await upstream.json().catch(()=>({}));
-   if(!upstream.ok){
-    const code=upstream.status===429?429:502;
-    return json({...geminiFailure(payload,upstream.status),attempts},code);
-   }
-   const reply=payload.candidates?.[0]?.content?.parts?.map(part=>part.text||"").join("").trim();
-   if(!reply)return json({error:"Gemini থেকে খালি উত্তর এসেছে।"},502);
-   return json({reply,model,provider:provider||"gemini"});
+   if(!upstream.ok){const code=upstream.status===429?429:502;return json({...geminiFailure(payload,upstream.status,provider),attempts},code);}
+   const answer=payload.candidates?.[0]?.content?.parts?.map(part=>part.text||"").join("").trim();
+   if(!answer)return json({error:"AI থেকে খালি উত্তর এসেছে।"},502);
+   const now=Date.now(),title=chat.title==="নতুন চ্যাট"?message.slice(0,60):chat.title;
+   await env.DB.batch([
+    env.DB.prepare("INSERT INTO chat_messages(id,chat_id,user_id,role,content,created_at) VALUES(?1,?2,?3,'user',?4,?5)").bind(crypto.randomUUID(),chatId,String(session.user_id),message,now),
+    env.DB.prepare("INSERT INTO chat_messages(id,chat_id,user_id,role,content,created_at) VALUES(?1,?2,?3,'assistant',?4,?5)").bind(crypto.randomUUID(),chatId,String(session.user_id),answer,now+1),
+    env.DB.prepare("UPDATE chat_conversations SET title=?1,updated_at=?2 WHERE id=?3 AND user_id=?4").bind(title,now+1,chatId,String(session.user_id))
+   ]);
+   return json({reply:answer,model,provider:provider||"gemini",chatId,title});
   }
-  if(url.pathname.startsWith("/api/"))return json({error:"API endpoint পাওয়া যায়নি।"},404);
+ if(url.pathname.startsWith("/api/"))return json({error:"API endpoint পাওয়া যায়নি।"},404);
   return env.ASSETS.fetch(request);
  }
 };
