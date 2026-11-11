@@ -15,7 +15,7 @@ function makeRecognition(mode){
  if(!SpeechRecognition){setVoiceStatus('এই ব্রাউজারে Speech Recognition সমর্থিত নয়। Chrome ব্যবহার করুন।');return null;}
  const r=new SpeechRecognition();r.lang='bn-BD';r.interimResults=true;r.continuous=mode==='dictation';let finalText='';
  r.onresult=event=>{
-  let interim='';for(let i=0;i<event.results.length;i++){const part=event.results[i][0].transcript;if(event.results[i].isFinal)finalText+=part;else interim+=part;}
+  let interim='';for(let i=event.resultIndex;i<event.results.length;i++){const part=event.results[i][0].transcript;if(event.results[i].isFinal)finalText+=part;else interim+=part;}
   if(mode==='dictation'){p.value=dictationBase+(dictationBase&&finalText?' ':'')+finalText+interim;}
   else if(finalText.trim()){p.value=finalText.trim();voiceThinking=true;setVoiceStatus('আপনার কথা পাঠানো হচ্ছে…');r.stop();go(true);}
  };
