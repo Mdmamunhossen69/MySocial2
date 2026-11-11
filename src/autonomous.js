@@ -53,22 +53,38 @@ export async function autonomousBuild({request,env,url,session,ghApi,ghDecrypt,g
   }
   if(total>350000) return reply({error:"প্রজেক্টের ফাইলের আকার অনুমোদিত সীমা ছাড়িয়েছে।"},413);
   const repoName=safeRepo(plan.repositoryName)?plan.repositoryName.toLowerCase():("king-coder-"+Date.now().toString(36));
-  if(!repoInfo) {
-    const cr=await ghApi("/user/repos",token,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:repoName,description:cleanText(plan.summary,300),private:true,auto_init:true})});
-    repoInfo=await cr.json().catch(()=>({}));
-    if(!cr.ok || !repoInfo.default_branch) return reply({error:"GitHub-এ নতুন repository তৈরি করা যায়নি: "+cleanText(repoInfo.message||"GitHub API error",300)},502);
+  return reply({
+    ok:true,
+    mode:"preview",
+    targetRepository:requestedRepo || "__new__",
+    repositoryName:repoName,
+    baseBranch:repoInfo?.default_branch || null,
+    summary:cleanText(plan.summary,500),
+    files:plan.files,
+    testPlan:Array.isArray(plan.testPlan)?plan.testPlan.slice(0,10):[],
+    attempts,
+    provider:"gemini"
+  });
+}
+
+function validProjectFiles(files) {
+  if(!Array.isArray(files) || files.length<2 || files.length>20) return false;
+  let total=0; const seen=new Set();
+  for(const f of files) {
+    if(!f || typeof f.path!=="string" || typeof f.content!=="string" ||
+      f.path.startsWith("/") || f.path.includes("\\") ||
+      f.path.split("/").some(p=>!p || p==="." || p==="..") ||
+      f.path.startsWith(".git/") || f.path.startsWith(".github/") ||
+      f.path.split("/").some(p=>p===".env" || p.startsWith(".env.")) ||
+      f.path.length>220 || seen.has(f.path)) return false;
+    seen.add(f.path); total+=f.content.length;
   }
-  const owner=repoInfo.owner.login, repo=repoInfo.name, branch=repoInfo.default_branch, base="/repos/"+encodeURIComponent(owner)+"/"+encodeURIComponent(repo);
-  const rr=await ghApi(base+"/git/ref/heads/"+branch.split("/").map(encodeURIComponent).join("/"),token), ref=await rr.json().catch(()=>({}));
-  if(!rr.ok || !ref.object?.sha) return reply({error:"Repository branch পড়া যায়নি।"},502);
-  const cm=await ghApi(base+"/git/commits/"+ref.object.sha,token), parent=await cm.json().catch(()=>({}));
-  if(!cm.ok || !parent.tree?.sha) return reply({error:"Repository-এর বর্তমান Git tree পড়া যায়নি।"},502);
-  const allFiles=[...plan.files,{path:".github/workflows/king-coder-ci.yml",content:`name: KING CODER build, test and deploy
+  return total<=350000;
+}
+
+function deployWorkflow() {
+  return `name: KING CODER manual Cloudflare publish
 on:
-  push:
-    branches: ["${branch}"]
-  pull_request:
-    branches: ["${branch}"]
   workflow_dispatch:
 permissions:
   contents: read
@@ -84,49 +100,91 @@ jobs:
         run: |
           if [ -f package-lock.json ]; then npm ci; elif [ -f package.json ]; then npm install; fi
       - name: Run tests
-        run: |
-          if [ -f package.json ]; then npm test --if-present; fi
+        run: if [ -f package.json ]; then npm test --if-present; fi
       - name: Build project
-        run: |
-          if [ -f package.json ]; then npm run build --if-present; fi
-      - name: Check Wrangler configuration
-        run: |
-          if [ -f wrangler.toml ] || [ -f wrangler.json ]; then npx --yes wrangler deploy --dry-run; fi
+        run: if [ -f package.json ]; then npm run build --if-present; fi
+      - name: Wrangler dry run
+        run: npx --yes wrangler deploy --dry-run
   deploy:
     needs: verify
-    if: \${{ github.event_name == 'push' }}
     runs-on: ubuntu-latest
-    env:
-      CF_TOKEN: \${{ secrets.CLOUDFLARE_API_TOKEN }}
-      CF_ACCOUNT: \${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - name: Install dependencies
+      - name: Check existing Cloudflare credentials
+        env:
+          CLOUDFLARE_API_TOKEN: \${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: \${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
-          if [ -f package-lock.json ]; then npm ci; elif [ -f package.json ]; then npm install; fi
-      - name: Deploy to Cloudflare Workers
-        if: \${{ env.CF_TOKEN != '' && env.CF_ACCOUNT != '' }}
-        uses: cloudflare/wrangler-action@v3
+          if [[ -z "$CLOUDFLARE_API_TOKEN" || -z "$CLOUDFLARE_ACCOUNT_ID" ]]; then
+            echo "Cloudflare credentials are not configured. No deployment was performed."
+            exit 1
+          fi
+      - uses: cloudflare/wrangler-action@v3
         with:
-          apiToken: \${{ env.CF_TOKEN }}
-          accountId: \${{ env.CF_ACCOUNT }}
+          apiToken: \${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: \${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: deploy
-`}];
+`;
+}
+
+export async function commitAutonomousBuild({request,env,url,session,ghApi,ghDecrypt}) {
+  const reply=(d,s=200)=>json(d,s);
+  if(request.method!=="POST") return reply({error:"শুধু POST request গ্রহণ করা হয়।"},405);
+  if(request.headers.get("Origin")!==url.origin) return reply({error:"Cross-origin request blocked।"},403);
+  if(!session) return reply({error:"প্রথমে GitHub সংযোগ করুন।"},401);
+  let body; try { body=await request.json(); } catch { return reply({error:"সঠিক JSON পাঠান।"},400); }
+  const target=cleanText(body.targetRepository,150);
+  const repositoryName=cleanText(body.repositoryName,90).toLowerCase();
+  const summary=cleanText(body.summary,500) || "KING CODER website build";
+  const files=body.files;
+  if(!safeRepo(repositoryName) || !validProjectFiles(files)) return reply({error:"প্রস্তাবিত project files বা repository name নিরাপদ নয়।"},400);
+  const token=await ghDecrypt(env,session.encrypted_token);
+  let repoInfo=null;
+  if(target && target!=="__new__") {
+    const parts=target.split("/");
+    if(parts.length!==2 || parts[0].toLowerCase()!==session.username.toLowerCase() || !safeRepo(parts[1])) return reply({error:"শুধু আপনার নিজের GitHub repository-তে কাজ করা যাবে।"},403);
+    const r=await ghApi("/repos/"+encodeURIComponent(parts[0])+"/"+encodeURIComponent(parts[1]),token);
+    repoInfo=await r.json().catch(()=>({}));
+    if(!r.ok || !repoInfo.default_branch || repoInfo.archived) return reply({error:"নির্বাচিত repository পড়া যায়নি বা archived।"},502);
+  } else {
+    const cr=await ghApi("/user/repos",token,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:repositoryName,description:summary.slice(0,300),private:true,auto_init:true})});
+    repoInfo=await cr.json().catch(()=>({}));
+    if(!cr.ok || !repoInfo.default_branch) return reply({error:"GitHub-এ নতুন private repository তৈরি করা যায়নি: "+cleanText(repoInfo.message||"GitHub API error",250)},502);
+  }
+  const owner=repoInfo.owner.login,repo=repoInfo.name,baseBranch=repoInfo.default_branch;
+  const base="/repos/"+encodeURIComponent(owner)+"/"+encodeURIComponent(repo);
+  const rr=await ghApi(base+"/git/ref/heads/"+baseBranch.split("/").map(encodeURIComponent).join("/"),token);
+  const ref=await rr.json().catch(()=>({}));
+  if(!rr.ok || !ref.object?.sha) return reply({error:"Repository-এর default branch পড়া যায়নি।"},502);
+  const cm=await ghApi(base+"/git/commits/"+ref.object.sha,token);
+  const parent=await cm.json().catch(()=>({}));
+  if(!cm.ok || !parent.tree?.sha) return reply({error:"Repository-এর বর্তমান Git tree পড়া যায়নি।"},502);
+  const finalFiles=[...files];
+  if(files.some(f=>f.path==="wrangler.toml" || f.path==="wrangler.json" || f.path==="wrangler.jsonc")) {
+    finalFiles.push({path:".github/workflows/king-coder-manual-deploy.yml",content:deployWorkflow()});
+  }
   const tree=[];
-  for(const f of allFiles) {
+  for(const f of finalFiles) {
     const br=await ghApi(base+"/git/blobs",token,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({content:f.content,encoding:"utf-8"})});
     const blob=await br.json().catch(()=>({}));
-    if(!br.ok || !blob.sha) return reply({error:"GitHub-এ file blob তৈরি করা যায়নি: "+f.path},502);
+    if(!br.ok || !blob.sha) return reply({error:"GitHub file blob তৈরি করা যায়নি: "+f.path},502);
     tree.push({path:f.path,mode:"100644",type:"blob",sha:blob.sha});
   }
-  const tr=await ghApi(base+"/git/trees",token,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({base_tree:parent.tree.sha,tree})}), newTree=await tr.json().catch(()=>({}));
-  if(!tr.ok || !newTree.sha) return reply({error:"GitHub project tree তৈরি করতে পারেনি।"},502);
-  const nc=await ghApi(base+"/git/commits",token,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:"Build website with KING CODER",tree:newTree.sha,parents:[ref.object.sha]})}), commit=await nc.json().catch(()=>({}));
-  if(!nc.ok || !commit.sha) return reply({error:"GitHub project commit তৈরি করতে পারেনি।"},502);
-  const upd=await ghApi(base+"/git/refs/heads/"+branch.split("/").map(encodeURIComponent).join("/"),token,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({sha:commit.sha,force:false})});
-  if(!upd.ok) return reply({error:"কোড commit হয়েছে, কিন্তু branch update ব্যর্থ। GitHub-এ যাচাই করুন।"},409);
-  return reply({ok:true,repository:owner+"/"+repo,repositoryUrl:repoInfo.html_url,branch,commit:commit.sha,commitUrl:commit.html_url,files:allFiles.map(x=>x.path),summary:cleanText(plan.summary,500),testPlan:Array.isArray(plan.testPlan)?plan.testPlan.slice(0,10):[],workflow:"queued",deployConfigured:false});
+  const tr=await ghApi(base+"/git/trees",token,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({base_tree:parent.tree.sha,tree})});
+  const newTree=await tr.json().catch(()=>({}));
+  if(!tr.ok || !newTree.sha) return reply({error:"GitHub project tree তৈরি করা যায়নি।"},502);
+  const nc=await ghApi(base+"/git/commits",token,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:"KING CODER: "+summary.slice(0,120),tree:newTree.sha,parents:[ref.object.sha]})});
+  const commit=await nc.json().catch(()=>({}));
+  if(!nc.ok || !commit.sha) return reply({error:"GitHub project commit তৈরি করা যায়নি।"},502);
+  const branchName="king-coder/build-"+Date.now().toString(36);
+  const createRef=await ghApi(base+"/git/refs",token,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({ref:"refs/heads/"+branchName,sha:commit.sha})});
+  if(!createRef.ok) return reply({error:"নিরাপদ feature branch তৈরি করা যায়নি।"},502);
+  const pr=await ghApi(base+"/pulls",token,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
+    title:"KING CODER: "+summary.slice(0,180),
+    head:branchName,base:baseBranch,
+    body:"## KING CODER প্রস্তাব\n\nএই পরিবর্তন Preview দেখে ব্যবহারকারীর অনুমোদনের পরে তৈরি হয়েছে।\n\n- Files: "+finalFiles.length+"\n- Base branch: "+baseBranch+"\n- Cloudflare publish: manual workflow_dispatch only; no automatic live deployment.\n\nদয়া করে GitHub Actions checks এবং diff পর্যালোচনা করে Merge করুন।"
+  })});
+  const pull=await pr.json().catch(()=>({}));
+  if(!pr.ok || !pull.html_url) return reply({ok:true,repository:owner+"/"+repo,repositoryUrl:repoInfo.html_url,branch:branchName,commit:commit.sha,commitUrl:commit.html_url,pullRequestUrl:null,warning:"Branch তৈরি হয়েছে, কিন্তু Pull Request তৈরি করা যায়নি। GitHub-এ branch পরীক্ষা করুন।",files:finalFiles.map(f=>f.path)},502);
+  return reply({ok:true,repository:owner+"/"+repo,repositoryUrl:repoInfo.html_url,branch:branchName,commit:commit.sha,commitUrl:commit.html_url,pullRequestUrl:pull.html_url,pullRequestNumber:pull.number,files:finalFiles.map(f=>f.path),manualPublish:true});
 }
