@@ -68,3 +68,42 @@ test("does not retry quota or authentication errors", async () => {
     globalThis.fetch = originalFetch;
   }
 });
+
+test("pauses Gemini after a Free-tier quota response and persists the cooldown", async () => {
+  const originalFetch = globalThis.fetch;
+  let calls = 0;
+  let stored = null;
+  const env = {
+    GEMINI_MODEL: "gemini-3.5-flash",
+    GEMINI_API_KEY: "test-key",
+    GEMINI_API_BILLING_STATUS: "verified_free",
+    DB: {
+      prepare(sql) {
+        return {
+          first: async () => stored,
+          bind(...values) {
+            return { run: async () => { stored = { blocked_until: values[0], reason: values[1] }; } };
+          }
+        };
+      }
+    }
+  };
+  globalThis.fetch = async () => {
+    calls++;
+    return new Response(JSON.stringify({ error: { status: "RESOURCE_EXHAUSTED", message: "daily quota exceeded" } }), { status: 429 });
+  };
+  try {
+    const first = await generateGemini({ env, systemInstruction: "test", contents: [{ role: "user", parts: [{ text: "hello" }] }] });
+    assert.equal(first.response.status, 429);
+    assert.equal(first.quotaBlocked, true);
+    assert.equal(calls, 1);
+    const second = await generateGemini({ env, systemInstruction: "test", contents: [{ role: "user", parts: [{ text: "again" }] }] });
+    assert.equal(second.response.status, 429);
+    assert.equal(second.quotaBlocked, true);
+    assert.equal(second.attempts, 0);
+    assert.equal(calls, 1);
+    assert.ok(stored.blocked_until > Date.now());
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
