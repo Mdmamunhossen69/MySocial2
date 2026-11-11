@@ -36,7 +36,10 @@ jobs:
           curl --retry 8 --retry-delay 2 --retry-all-errors -fsS "$WORKER_URL/" -o /tmp/king-coder-home.html
           grep -q "KING CODER" /tmp/king-coder-home.html
           echo "Homepage smoke test passed"
-          curl --retry 8 --retry-delay 2 --retry-all-errors -fsS "$WORKER_URL/admin.html" -o /tmp/king-coder-admin.html
+          admin_status="$(curl -sS -o /tmp/king-coder-admin.html -w '%{http_code}' "$WORKER_URL/admin.html")"
+          echo "Admin page HTTP status: $admin_status"
+          head -c 300 /tmp/king-coder-admin.html || true
+          test "$admin_status" = "200"
           grep -q "KING CODER" /tmp/king-coder-admin.html
           echo "Admin page smoke test passed"
           curl --retry 8 --retry-delay 2 --retry-all-errors -fsS "$WORKER_URL/api/health" -o /tmp/king-coder-health.json
