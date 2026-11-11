@@ -1,6 +1,15 @@
-name = "king-coder"
+name = "mysocial2"
 main = "src/index.js"
 compatibility_date = "2026-11-11"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "king-coder-db"
+database_id = "fe9f40b7-aa61-4ab4-bd80-e07c5c31285f"
+
+[[previews.d1_databases]]
+binding = "DB"
+database_id = "fe9f40b7-aa61-4ab4-bd80-e07c5c31285f"
 
 [assets]
 directory = "./public"
