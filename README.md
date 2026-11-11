@@ -3,7 +3,7 @@
 A Bengali-first AI website builder running on Cloudflare Workers, Gemini, GitHub OAuth, and D1.
 
 ## Capabilities
-- Gemini chat in Bengali and English.
+- Gemini chat in Bengali and English, enabled only after the owner explicitly verifies the linked Google AI Studio project is on the Free tier.
 - GitHub OAuth with encrypted tokens and HttpOnly sessions.
 - Select an owned repository or let KING CODER create a new private repository.
 - Describe a website or provide a public HTTPS reference URL.
@@ -32,6 +32,7 @@ For this KING CODER Worker itself, `.github/workflows/deploy-worker.yml` is manu
 - Required Worker secrets: `GEMINI_API_KEY`, `GITHUB_CLIENT_SECRET`
 - Required Worker variable: `GITHUB_CLIENT_ID`
 - Gemini model variable: `GEMINI_MODEL`
+- Safety variable: `GEMINI_API_BILLING_STATUS` (must equal `verified_free` to allow Gemini API requests; if unset, all Gemini API calls are blocked)
 
 GitHub OAuth callback:
 `https://mysocial2.mdmamunhossenlimon7.workers.dev/api/github/callback`
@@ -59,11 +60,12 @@ GitHub OAuth callback:
 
 
 ## AI team and cost safeguards
-- Gemini is the configured cloud assistant and is assigned manager/inspection duties.
-- Codex and Gemini CLI are reported as unavailable until a supported, user-authorized local agent connection exists; ChatGPT Free access is not treated as a Worker API key.
+- Gemini API requests are blocked by default until the owner verifies the exact Google AI Studio project is on the Free tier and explicitly sets `GEMINI_API_BILLING_STATUS=verified_free` in Worker variables.
+- A Gemini API key alone does not prove Free-tier status. Do not set the verification variable based on assumptions or the existence of a key.
+- Codex CLI and Google Antigravity CLI require a local computer/terminal and account OAuth; Cloudflare Workers cannot execute these local CLI programs. ChatGPT Free Codex access is not treated as a Worker API key.
 - No Claude paid API or automatic paid-provider fallback is configured.
 - Existing daily quotas are shown in the AI Team panel. The Worker cannot verify whether the Google Gemini API project has billing enabled; confirm billing status in Google Cloud/AI Studio before assuming API calls are free.
 - Task history is stored locally in the browser and is not a server-wide audit log.
 - Gemini's manager/inspector review is a single-pass static self-review; it is not a live browser visual test.
-- Codex and Gemini CLI remain disconnected until a supported local agent bridge is installed and authorized. They are not called as Worker APIs.
+- Google retired consumer free access to the old Gemini CLI on June 18, 2026; Antigravity CLI (`agy`) is the supported individual-account replacement. Its Free plan has weekly baseline quotas. Set AI-credit overages to Never/off where available. Neither CLI is connected to the Worker until a local agent bridge and user OAuth are completed.
 - Existing daily limits are 100 chats, 5 website previews and 20 code proposals per user. These limits are application controls, not proof of Google free-tier eligibility.

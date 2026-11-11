@@ -91,16 +91,17 @@ if(url.pathname==="/api/build/commit"&&req.method==="POST"){
   if(!session)return reply({error:"AI Team status দেখতে GitHub দিয়ে লগইন করুন।"},401);
   const today=new Date().toISOString().slice(0,10);
   const usage=await env.DB.prepare("SELECT chat_count,build_count,code_count FROM user_usage WHERE user_id=?1 AND usage_date=?2").bind(String(session.user_id),today).first();
+  const geminiFreeVerified=env.GEMINI_API_BILLING_STATUS==="verified_free";
   return reply({
     ok:true,
     team:[
-      {id:"gemini",name:"Gemini",role:"Manager ও Website Inspector",status:env.GEMINI_API_KEY?"available":"not_configured",runtime:"cloudflare_worker"},
-      {id:"codex",name:"OpenAI Codex",role:"Coding Agent",status:"not_connected",runtime:"requires_user_authorized_local_or_supported_codex_session",note:"ChatGPT Free Codex access সরাসরি Worker API credential নয়।"},
-      {id:"gemini-cli",name:"Gemini CLI",role:"Local Coding Assistant",status:"local_only",runtime:"requires_local_computer_agent"},
+      {id:"gemini",name:"Gemini API",role:"Manager ও Website Inspector",status:!env.GEMINI_API_KEY?"not_configured":geminiFreeVerified?"available":"billing_unverified_blocked",runtime:"cloudflare_worker",billingStatus:geminiFreeVerified?"verified_free":"unverified"},
+      {id:"codex",name:"OpenAI Codex CLI",role:"Coding Agent",status:"not_connected",runtime:"requires_user_authorized_local_or_supported_codex_session",note:"ChatGPT Free sign-in can provide limited Codex access; it is not a Worker API credential and local OAuth is still required."},
+      {id:"antigravity-cli",name:"Google Antigravity CLI",role:"Local Coding Assistant",status:"local_only",runtime:"requires_local_computer_agent",note:"Antigravity CLI is the current individual-account replacement for Gemini CLI; local Google sign-in is required."},
       {id:"claude",name:"Claude",role:"Optional Coding Agent",status:"disabled",runtime:"no_paid_api_configured"}
     ],
     usage:{date:today,chat:usage?.chat_count||0,build:usage?.build_count||0,code:usage?.code_count||0,limits:{chat:100,build:5,code:20}},
-    costGuard:{paidFallback:false,automaticProviderUpgrade:false,providerBillingVerified:false,detail:"KING CODER কোনো পেইড fallback ব্যবহার করে না। Gemini API project-এর billing status Worker থেকে যাচাই করা যায় না; Google account billing আলাদাভাবে নিশ্চিত করতে হবে।"}
+    costGuard:{paidFallback:false,automaticProviderUpgrade:false,providerBillingVerified:geminiFreeVerified,geminiApiBlocked:!geminiFreeVerified,detail:geminiFreeVerified?"Gemini API is enabled only after the owner explicitly marks this project verified Free tier.":"Gemini API requests are blocked by default. Verify the exact project is Free tier in Google AI Studio before setting GEMINI_API_BILLING_STATUS=verified_free. No paid fallback is configured."}
   });
  }
 
@@ -151,7 +152,7 @@ export default {
  async fetch(request,env){
   const url=new URL(request.url);
   if(url.pathname==="/api/health"&&request.method==="GET"){
-   return json({ok:true,service:"KING CODER API",configured:Boolean(env.GEMINI_API_KEY),githubConfigured:Boolean(env.DB&&env.GITHUB_CLIENT_ID&&env.GITHUB_CLIENT_SECRET),databaseConfigured:Boolean(env.DB),model:env.GEMINI_MODEL||"gemini-3.5-flash"});
+   return json({ok:true,service:"KING CODER API",configured:Boolean(env.GEMINI_API_KEY&&env.GEMINI_API_BILLING_STATUS==="verified_free"),geminiApiKeyConfigured:Boolean(env.GEMINI_API_KEY),geminiBillingVerified:env.GEMINI_API_BILLING_STATUS==="verified_free",githubConfigured:Boolean(env.DB&&env.GITHUB_CLIENT_ID&&env.GITHUB_CLIENT_SECRET),databaseConfigured:Boolean(env.DB),model:env.GEMINI_MODEL||"gemini-3.5-flash"});
   }
   const githubResponse=await ghRoutes(request,env,url);if(githubResponse)return githubResponse;
   if(url.pathname==="/api/chat"){
