@@ -149,7 +149,7 @@ export async function generateGemini({ env, systemInstruction, contents, generat
   if (!response.ok) {
     const providerError = payload?.error || {};
     const status = response.status;
-    const safeMessage = String(providerError.message || "Groq API request failed").replace(/Bearer\\s+[^\\s,;]+/gi, "Bearer [REDACTED]").slice(0, 400);
+    const safeMessage = String(providerError.message || "Groq API request failed").replace(/Bearer\s+[^\s,;]+/gi, "Bearer [REDACTED]").slice(0, 400);
     return { response: new Response(JSON.stringify({ error: { message: safeMessage, status: status === 429 ? "GROQ_RATE_LIMITED" : "GROQ_API_ERROR" } }), { status, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } }), model, attempts: 1, provider: "groq" };
   }
   const answer = payload?.choices?.[0]?.message?.content;
