@@ -1,0 +1,28 @@
+name: KING CODER quality checks
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  syntax-and-ui:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check Worker JavaScript syntax
+        run: |
+          node --check src/index.js
+          node --check src/autonomous.js
+          node --check src/ai.js
+      - name: Check browser JavaScript syntax
+        run: |
+          node --input-type=commonjs -e "const fs=require('fs');const html=fs.readFileSync('public/index.html','utf8');const scripts=[...html.matchAll(/<script(?:\\s[^>]*)?>([\\s\\S]*?)<\\/script>/gi)];if(!scripts.length)throw new Error('No inline application script found');fs.writeFileSync('/tmp/king-coder-ui.js',scripts.map(x=>x[1]).join('\\n'));"
+          node --check /tmp/king-coder-ui.js
+      - name: Check HTML document and essential controls
+        run: |
+          node --input-type=commonjs -e "const fs=require('fs');const h=fs.readFileSync('public/index.html','utf8');for(const id of ['prompt','buildSite','livePreview','proposalFiles','approveCommit','repos'])if(!h.includes('id=\"'+id+'\"'))throw new Error('Missing UI element: '+id);if(!/<html\\b/i.test(h)||!/<\\/html>/i.test(h))throw new Error('HTML document is incomplete');"
