@@ -68,6 +68,8 @@ export async function autonomousBuild({request,env,url,session,ghApi,ghDecrypt,g
 on:
   push:
     branches: ["${branch}"]
+  pull_request:
+    branches: ["${branch}"]
   workflow_dispatch:
 permissions:
   contents: read
@@ -93,8 +95,11 @@ jobs:
           if [ -f wrangler.toml ] || [ -f wrangler.json ]; then npx --yes wrangler deploy --dry-run; fi
   deploy:
     needs: verify
-    if: ${{ vars.KING_CODER_AUTO_DEPLOY == 'true' }}
+    if: ${{ github.event_name == 'push' }}
     runs-on: ubuntu-latest
+    env:
+      CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -104,11 +109,11 @@ jobs:
         run: |
           if [ -f package-lock.json ]; then npm ci; elif [ -f package.json ]; then npm install; fi
       - name: Deploy to Cloudflare Workers
-        if: ${{ secrets.CLOUDFLARE_API_TOKEN != '' && secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
+        if: ${{ env.CF_TOKEN != '' && env.CF_ACCOUNT != '' }}
         uses: cloudflare/wrangler-action@v3
         with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          apiToken: ${{ env.CF_TOKEN }}
+          accountId: ${{ env.CF_ACCOUNT }}
           command: deploy
 `}];
   const tree=[];
