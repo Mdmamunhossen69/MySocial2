@@ -95,11 +95,11 @@ jobs:
           if [ -f wrangler.toml ] || [ -f wrangler.json ]; then npx --yes wrangler deploy --dry-run; fi
   deploy:
     needs: verify
-    if: ${{ github.event_name == 'push' }}
+    if: \${{ github.event_name == 'push' }}
     runs-on: ubuntu-latest
     env:
-      CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CF_TOKEN: \${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CF_ACCOUNT: \${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -109,11 +109,11 @@ jobs:
         run: |
           if [ -f package-lock.json ]; then npm ci; elif [ -f package.json ]; then npm install; fi
       - name: Deploy to Cloudflare Workers
-        if: ${{ env.CF_TOKEN != '' && env.CF_ACCOUNT != '' }}
+        if: \${{ env.CF_TOKEN != '' && env.CF_ACCOUNT != '' }}
         uses: cloudflare/wrangler-action@v3
         with:
-          apiToken: ${{ env.CF_TOKEN }}
-          accountId: ${{ env.CF_ACCOUNT }}
+          apiToken: \${{ env.CF_TOKEN }}
+          accountId: \${{ env.CF_ACCOUNT }}
           command: deploy
 `}];
   const tree=[];
