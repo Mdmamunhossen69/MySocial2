@@ -4,7 +4,7 @@ const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:
 function geminiFailure(payload,status){
  const providerError=payload&&typeof payload.error==="object"?payload.error:{};
  let message=typeof providerError.message==="string"?providerError.message:"Google Gemini API কোনো বিস্তারিত error message দেয়নি।";
- message=message.replace(/AIza[0-9A-Za-z_-]{20,}/g,"[REDACTED_API_KEY]").replace(/Bearer\\s+[^\\s,;]+/gi,"Bearer [REDACTED]").replace(/[\\r\\n]+/g," ").slice(0,500);
+ message=message.replace(/AIza[0-9A-Za-z_-]{20,}/g,"[REDACTED_API_KEY]").replace(/Bearer\s+[^\s,;]+/gi,"Bearer [REDACTED]").replace(/[\r\n]+/g," ").slice(0,500);
  const code=typeof providerError.status==="string"?providerError.status:null;
  return {error:`Gemini API error (${status}${code?" "+code:""}): ${message}`,provider:"gemini",status,code};
 }
