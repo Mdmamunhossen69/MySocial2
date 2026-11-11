@@ -53,3 +53,8 @@ jobs:
           code="$(curl -sS -o /tmp/king-coder-build-guard.json -w '%{http_code}' -X POST -H "Origin: $WORKER_URL" -H "Content-Type: application/json" --data '{"prompt":"smoke test"}' "$WORKER_URL/api/build")"
           echo "Build guard HTTP status: $code"
           test "$code" = "401"
+
+          oauth_status="$(curl -sS -D /tmp/king-coder-oauth.headers -o /dev/null -w '%{http_code}' "$WORKER_URL/api/github/login")"
+          echo "GitHub OAuth login redirect HTTP status: $oauth_status"
+          test "$oauth_status" = "302"
+          grep -qi "location: https://github.com/login/oauth/authorize" /tmp/king-coder-oauth.headers
