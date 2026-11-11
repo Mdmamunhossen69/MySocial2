@@ -33,6 +33,7 @@ export async function autonomousBuild({request,env,url,session,ghApi,ghDecrypt,g
   if(request.method!=="POST") return reply({error:"শুধু POST request গ্রহণ করা হয়।"},405);
   if(request.headers.get("Origin")!==url.origin) return reply({error:"Cross-origin request blocked।"},403);
   if(!session) return reply({error:"প্রথমে GitHub সংযোগ করুন।"},401);
+  if(env.GEMINI_API_BILLING_STATUS!=="verified_free") return reply({error:"নিরাপত্তার জন্য Gemini API বন্ধ আছে। Google AI Studio-তে এই project Free tier হিসেবে যাচাই না হওয়া পর্যন্ত কোনো AI request পাঠানো হবে না।"},503);
   if(!env.GEMINI_API_KEY) return reply({error:"Gemini API secret নেই।"},503);
   let body; try { body=await request.json(); } catch { return reply({error:"সঠিক JSON পাঠান।"},400); }
   const prompt=cleanText(body.prompt,10000);

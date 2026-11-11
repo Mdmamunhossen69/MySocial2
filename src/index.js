@@ -109,6 +109,7 @@ if(url.pathname==="/api/build/commit"&&req.method==="POST"){
   const origin=req.headers.get("Origin");if(origin!==url.origin)return reply({error:"Cross-origin request blocked."},403);
   const session=await ghSession(req,env);if(!session)return reply({error:"বিনামূল্যে অ্যাকাউন্ট খুলতে প্রথমে GitHub দিয়ে নিবন্ধন / লগইন করুন।"},401);
   await ghTouchActivity(env,session,"code");
+  if(env.GEMINI_API_BILLING_STATUS!=="verified_free")return reply({error:"নিরাপত্তার জন্য Gemini API বন্ধ আছে। Google AI Studio-তে এই project Free tier হিসেবে যাচাই না হওয়া পর্যন্ত কোনো AI request পাঠানো হবে না।"},503);
   const quota=await ghConsumeQuota(env,session.user_id,"code",20);if(!quota.ok)return reply({error:"আজকের বিনামূল্যের Code Generation সীমা (২০টি) শেষ হয়েছে। আগামীকাল আবার চেষ্টা করুন।"},429);
   if(!env.GEMINI_API_KEY)return reply({error:"Gemini API secret নেই।"},503);
   let body;try{body=await req.json();}catch{return reply({error:"সঠিক JSON পাঠান।"},400);}
@@ -161,6 +162,7 @@ export default {
    const session=await ghSession(request,env);
    if(!session)return json({error:"বিনামূল্যে অ্যাকাউন্ট খুলতে প্রথমে GitHub দিয়ে নিবন্ধন / লগইন করুন।"},401);
    await ghTouchActivity(env,session,"chat");
+   if(env.GEMINI_API_BILLING_STATUS!=="verified_free")return json({error:"নিরাপত্তার জন্য Gemini API বন্ধ আছে। Google AI Studio-তে এই project Free tier হিসেবে যাচাই না হওয়া পর্যন্ত কোনো AI request পাঠানো হবে না।"},503);
    const quota=await ghConsumeQuota(env,session.user_id,"chat",100);
    if(!quota.ok)return json({error:"আজকের বিনামূল্যের AI Chat সীমা (১০০টি বার্তা) শেষ হয়েছে। আগামীকাল আবার চেষ্টা করুন।"},429);
    if(!env.GEMINI_API_KEY)return json({error:"সার্ভারে GEMINI_API_KEY secret সেট করা নেই।"},503);
