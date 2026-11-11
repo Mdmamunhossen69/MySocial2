@@ -36,14 +36,9 @@ jobs:
           curl --retry 8 --retry-delay 2 --retry-all-errors -fsS "$WORKER_URL/" -o /tmp/king-coder-home.html
           grep -q "KING CODER" /tmp/king-coder-home.html
           echo "Homepage smoke test passed"
-          admin_status="$(curl -sS -D /tmp/king-coder-admin.headers -o /tmp/king-coder-admin.html -w '%{http_code}' "$WORKER_URL/admin.html")"
-          echo "Admin page HTTP status: $admin_status"
-          cat /tmp/king-coder-admin.headers
-          head -c 300 /tmp/king-coder-admin.html || true
-          curl --retry 3 --retry-delay 2 --retry-all-errors -L -fsS "$WORKER_URL/admin.html" -o /tmp/king-coder-admin-final.html
-          grep -q "KING CODER" /tmp/king-coder-admin-final.html
+          curl --retry 3 --retry-delay 2 --retry-all-errors -L -fsS "$WORKER_URL/admin.html" -o /tmp/king-coder-admin.html
           grep -q "KING CODER" /tmp/king-coder-admin.html
-          echo "Admin page smoke test passed"
+          echo "Admin page smoke test passed (redirect /admin.html → /admin)"
           curl --retry 8 --retry-delay 2 --retry-all-errors -fsS "$WORKER_URL/api/health" -o /tmp/king-coder-health.json
           cat /tmp/king-coder-health.json
           node -e 'const h=require("/tmp/king-coder-health.json"); for (const k of ["ok","configured","geminiApiKeyConfigured","geminiBillingVerified","githubConfigured","databaseConfigured"]) if (h[k] !== true) throw new Error("Production health failed: "+k);'
