@@ -20,23 +20,3 @@ jobs:
           node --check src/autonomous.js
       - name: Check whitespace errors
         run: git diff --check
-
-  deploy:
-    needs: syntax
-    if: ${{ github.event_name == 'push' }}
-    runs-on: ubuntu-latest
-    env:
-      CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - name: Deploy KING CODER to Cloudflare Workers
-        if: ${{ env.CF_TOKEN != '' && env.CF_ACCOUNT != '' }}
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ env.CF_TOKEN }}
-          accountId: ${{ env.CF_ACCOUNT }}
-          command: deploy --keep-vars
