@@ -40,7 +40,9 @@ GitHub OAuth callback:
 - `GET /api/health`
 - `GET /api/github/login`, `GET /api/github/callback`
 - `GET /api/github/status`, `GET /api/github/repos`
-- `POST /api/build` (autonomous project generation and GitHub commit)
+- `POST /api/build` (Gemini project preview only; no GitHub writes)
+- `POST /api/build/commit` (after explicit approval, creates a feature branch and Pull Request)
+- `GET /api/ai/team` (provider status, daily usage and cost-policy status)
 - `POST /api/code/generate` (review-first code proposal)
 - `POST /api/github/commit` (user-approved code commit)
 - `POST /api/github/disconnect`
@@ -60,3 +62,6 @@ GitHub OAuth callback:
 - No Claude paid API or automatic paid-provider fallback is configured.
 - Existing daily quotas are shown in the AI Team panel. The Worker cannot verify whether the Google Gemini API project has billing enabled; confirm billing status in Google Cloud/AI Studio before assuming API calls are free.
 - Task history is stored locally in the browser and is not a server-wide audit log.
+- Gemini's manager/inspector review is a single-pass static self-review; it is not a live browser visual test.
+- Codex and Gemini CLI remain disconnected until a supported local agent bridge is installed and authorized. They are not called as Worker APIs.
+- Existing daily limits are 100 chats, 5 website previews and 20 code proposals per user. These limits are application controls, not proof of Google free-tier eligibility.
