@@ -6,9 +6,9 @@ Bengali-friendly AI coding assistant prototype using Cloudflare Workers, Gemini,
 - Responsive Bengali chat UI and Gemini API proxy.
 - GitHub OAuth login with one-time state validation.
 - OAuth tokens encrypted at rest in D1 using AES-GCM; HttpOnly, Secure, SameSite=Lax session cookies.
-- List repositories and create a commit containing up to 20 files (1 MB total).
+- List repositories, generate a proposed code change using the current branch files as context, review/edit the preview, and create a user-approved commit containing up to 20 files (1 MB total).
 - Writes are restricted to repositories owned by the connected GitHub username.
-- This is not yet an autonomous coding agent: no code execution sandbox, automatic test runner, project history, or agent loop.
+- This is an early code-generation workflow, not a fully autonomous coding agent: it has no isolated code execution sandbox, automatic test runner, persistent project history, or multi-step agent loop. Generated changes are proposals; the user must review and explicitly approve each commit.
 
 ## GitHub OAuth setup (Cloudflare)
 1. Create a D1 database and execute `migrations/0001_github_oauth.sql` in its Console.
@@ -24,7 +24,7 @@ The OAuth app requests `repo` and `read:user` permissions so it can write to pri
 ## API
 - `GET /api/github/login`, `GET /api/github/callback`
 - `GET /api/github/status`, `GET /api/github/repos`
-- `POST /api/github/commit` with JSON: `{"owner":"your-login","repo":"project","branch":"main","message":"Add files","files":[{"path":"index.html","content":"..."}]}`
+- `POST /api/code/generate` (authenticated; reads up to 8 small text files from the selected branch and returns a JSON proposal).\n- `POST /api/github/commit` (authenticated; same-origin only; rejects workflow-file paths) with JSON: `{"owner":"your-login","repo":"project","branch":"main","message":"Add files","files":[{"path":"index.html","content":"..."}]}`
 - `POST /api/github/disconnect`
 
 ## Safety
