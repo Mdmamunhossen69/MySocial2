@@ -129,7 +129,7 @@ export async function generateGemini({ env, systemInstruction, contents, generat
   if (systemInstruction) messages.push({ role: "system", content: systemInstruction });
   for (const item of (Array.isArray(contents) ? contents : [])) {
     const role = item?.role === "model" ? "assistant" : "user";
-    const content = Array.isArray(item?.parts) ? item.parts.map(part => String(part?.text || "")).join("\\n") : "";
+    const content = Array.isArray(item?.parts) ? item.parts.map(part => String(part?.text || "")).join("\n") : "";
     if (content) messages.push({ role, content });
   }
   const requestBody = { model, messages, temperature: generationConfig?.temperature ?? 0.2 };
