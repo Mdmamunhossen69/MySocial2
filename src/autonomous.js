@@ -34,7 +34,9 @@ export async function autonomousBuild({request,env,url,session,ghApi,ghDecrypt,g
   if(request.headers.get("Origin")!==url.origin) return reply({error:"Cross-origin request blocked।"},403);
   if(!session) return reply({error:"প্রথমে GitHub সংযোগ করুন।"},401);
   if(env.GEMINI_API_BILLING_STATUS!=="verified_free") return reply({error:"নিরাপত্তার জন্য Gemini API বন্ধ আছে। Google AI Studio-তে এই project Free tier হিসেবে যাচাই না হওয়া পর্যন্ত কোনো AI request পাঠানো হবে না।"},503);
-  if(!env.GEMINI_API_KEY) return reply({error:"Gemini API secret নেই।"},503);\n  const providerQuota=await getGeminiQuotaState(env);\n  if(providerQuota.blocked) return reply({error:"Gemini Free Tier-এর দৈনিক quota শেষ। অপ্রয়োজনীয় request বন্ধ রাখা হয়েছে; quota cooldown শেষ হলে আবার চেষ্টা করুন।",code:"RESOURCE_EXHAUSTED",retryAt:providerQuota.blockedUntil,model:env.GEMINI_MODEL||"gemini-3.5-flash"},429);
+  if(!env.GEMINI_API_KEY) return reply({error:"Gemini API secret নেই।"},503);
+  const providerQuota=await getGeminiQuotaState(env);
+  if(providerQuota.blocked) return reply({error:"Gemini Free Tier-এর দৈনিক quota শেষ। অপ্রয়োজনীয় request বন্ধ রাখা হয়েছে; quota cooldown শেষ হলে আবার চেষ্টা করুন।",code:"RESOURCE_EXHAUSTED",retryAt:providerQuota.blockedUntil,model:env.GEMINI_MODEL||"gemini-3.5-flash"},429);
   let body; try { body=await request.json(); } catch { return reply({error:"সঠিক JSON পাঠান।"},400); }
   const prompt=cleanText(body.prompt,10000);
   const reference=cleanText(body.referenceUrl,1500);
