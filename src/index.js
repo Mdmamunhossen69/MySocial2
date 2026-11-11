@@ -1,5 +1,5 @@
 import { autonomousBuild, commitAutonomousBuild } from "./autonomous.js";
-import { generateGemini } from "./ai.js";
+import { generateGemini, getGeminiQuotaState } from "./ai.js";
 const SYSTEM_INSTRUCTION = `আপনি KING CODER, একজন সহায়ক AI coding assistant। ব্যবহারকারীর ভাষায় উত্তর দিন; বাংলা হলে স্বাভাবিক, পরিষ্কার বাংলায় উত্তর দিন এবং সম্মানসূচক “আপনি” ব্যবহার করুন।
 আপনি KING CODER-এর AI সহকারী। ব্যবহারকারী যদি ওয়েবসাইট বা web app তৈরি করতে বলেন, UI /api/build দিয়ে আগে read-only signed Preview তৈরি করে; অনুমোদনের পরে /api/build/commit আলাদা branch ও Pull Request তৈরি করে। কোনো Live Deployment স্বয়ংক্রিয়ভাবে হয় না। আপনি কেবল বাস্তবে যাচাইকৃত ফলাফলই জানাবেন। কোনো কাজ সফল না হলে সফল হয়েছে বলবেন না। গোপন API key চাইবেন না এবং ব্যবহারকারীকে chat-এ key paste করতে বলবেন না।`;
 const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store"}});
@@ -91,17 +91,17 @@ if(url.pathname==="/api/build/commit"&&req.method==="POST"){
   if(!session)return reply({error:"AI Team status দেখতে GitHub দিয়ে লগইন করুন।"},401);
   const today=new Date().toISOString().slice(0,10);
   const usage=await env.DB.prepare("SELECT chat_count,build_count,code_count FROM user_usage WHERE user_id=?1 AND usage_date=?2").bind(String(session.user_id),today).first();
-  const geminiFreeVerified=env.GEMINI_API_BILLING_STATUS==="verified_free";
+  const geminiFreeVerified=env.GEMINI_API_BILLING_STATUS==="verified_free";\n  const providerQuota=await getGeminiQuotaState(env);
   return reply({
     ok:true,
     team:[
-      {id:"gemini",name:"Gemini API",role:"Manager ও Website Inspector",status:!env.GEMINI_API_KEY?"not_configured":geminiFreeVerified?"available":"billing_unverified_blocked",runtime:"cloudflare_worker",billingStatus:geminiFreeVerified?"verified_free":"unverified"},
+      {id:"gemini",name:"Gemini API",role:"Manager ও Website Inspector",status:!env.GEMINI_API_KEY?"not_configured":!geminiFreeVerified?"billing_unverified_blocked":providerQuota.blocked?"quota_exhausted":"available",runtime:"cloudflare_worker",billingStatus:geminiFreeVerified?"verified_free":"unverified",quotaBlocked:providerQuota.blocked,retryAt:providerQuota.blocked?providerQuota.blockedUntil:null},
       {id:"codex",name:"OpenAI Codex CLI",role:"Coding Agent",status:"not_connected",runtime:"requires_user_authorized_local_or_supported_codex_session",note:"ChatGPT Free sign-in can provide limited Codex access; it is not a Worker API credential and local OAuth is still required."},
       {id:"antigravity-cli",name:"Google Antigravity CLI",role:"Local Coding Assistant",status:"local_only",runtime:"requires_local_computer_agent",note:"Antigravity CLI is the current individual-account replacement for Gemini CLI; local Google sign-in is required."},
       {id:"claude",name:"Claude",role:"Optional Coding Agent",status:"disabled",runtime:"no_paid_api_configured"}
     ],
     usage:{date:today,chat:usage?.chat_count||0,build:usage?.build_count||0,code:usage?.code_count||0,limits:{chat:100,build:5,code:20}},
-    costGuard:{paidFallback:false,automaticProviderUpgrade:false,providerBillingVerified:geminiFreeVerified,geminiApiBlocked:!geminiFreeVerified,detail:geminiFreeVerified?"Gemini API is enabled only after the owner explicitly marks this project verified Free tier.":"Gemini API requests are blocked by default. Verify the exact project is Free tier in Google AI Studio before setting GEMINI_API_BILLING_STATUS=verified_free. No paid fallback is configured."}
+    costGuard:{paidFallback:false,automaticProviderUpgrade:false,providerBillingVerified:geminiFreeVerified,geminiApiBlocked:!geminiFreeVerified||providerQuota.blocked,quotaExhausted:providerQuota.blocked,retryAt:providerQuota.blocked?providerQuota.blockedUntil:null,detail:providerQuota.blocked?"Gemini Free Tier quota exhausted. Requests are paused until the cooldown expires; no paid fallback or automatic upgrade.":geminiFreeVerified?"Free-tier project verification is configured. Remaining provider quota is not guaranteed. No paid fallback is configured.":"Gemini API requests are blocked by default. Verify the exact project is Free tier in Google AI Studio before setting GEMINI_API_BILLING_STATUS=verified_free. No paid fallback is configured."}
   });
  }
 
