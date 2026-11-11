@@ -91,7 +91,8 @@ if(url.pathname==="/api/build/commit"&&req.method==="POST"){
   if(!session)return reply({error:"AI Team status দেখতে GitHub দিয়ে লগইন করুন।"},401);
   const today=new Date().toISOString().slice(0,10);
   const usage=await env.DB.prepare("SELECT chat_count,build_count,code_count FROM user_usage WHERE user_id=?1 AND usage_date=?2").bind(String(session.user_id),today).first();
-  const geminiFreeVerified=env.GEMINI_API_BILLING_STATUS==="verified_free";\n  const providerQuota=await getGeminiQuotaState(env);
+  const geminiFreeVerified=env.GEMINI_API_BILLING_STATUS==="verified_free";
+  const providerQuota=await getGeminiQuotaState(env);
   return reply({
     ok:true,
     team:[
