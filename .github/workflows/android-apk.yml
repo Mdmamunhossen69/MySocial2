@@ -1,0 +1,88 @@
+name: Build KING CODER Android APK
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'public/**'
+      - 'src/**'
+      - 'package.json'
+      - 'capacitor.config.json'
+      - '.github/workflows/android-apk.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: king-coder-android-apk
+  cancel-in-progress: true
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install Capacitor
+        run: npm install
+
+      - name: Generate Android project
+        run: npx cap add android
+
+      - name: Add Android microphone permissions
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("android/app/src/main/AndroidManifest.xml")
+          s = p.read_text()
+          marker = '<manifest xmlns:android="http://schemas.android.com/apk/res/android">'
+          permissions = '''<uses-permission android:name="android.permission.INTERNET" />
+              <uses-permission android:name="android.permission.RECORD_AUDIO" />
+              <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+          '''
+          if "android.permission.RECORD_AUDIO" not in s:
+              s = s.replace(marker, marker + "\n    " + permissions, 1)
+          p.write_text(s)
+          PY
+
+      - name: Build debug APK
+        run: |
+          cd android
+          ./gradlew --no-daemon assembleDebug
+          cd ..
+          mkdir -p release
+          cp android/app/build/outputs/apk/debug/app-debug.apk release/KING-CODER.apk
+
+      - name: Upload APK build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: KING-CODER-Android-APK
+          path: release/KING-CODER.apk
+          retention-days: 30
+
+      - name: Publish latest APK release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-latest
+          name: KING CODER — Latest Android APK
+          body: |
+            সর্বশেষ KING CODER Android APK।
+
+            অ্যাপটি লাইভ KING CODER ওয়েব অ্যাপ লোড করে। ওয়েবসাইটে নতুন ফিচার Deploy হলে অ্যাপেও তা স্বয়ংক্রিয়ভাবে দেখা যাবে; সাধারণ ওয়েব আপডেটের জন্য APK পুনরায় ইনস্টল প্রয়োজন নেই।
+          files: release/KING-CODER.apk
+          overwrite_files: true
+          make_latest: false
