@@ -18,7 +18,7 @@ function quotaCooldownUntil(payload, now = Date.now()) {
   const details = Array.isArray(payload?.error?.details) ? payload.error.details : [];
   const retry = details.find(item => String(item?.["@type"] || "").endsWith("RetryInfo"));
   const value = String(retry?.retryDelay || "");
-  const match = value.match(/^(\\d+(?:\\.\\d+)?)s$/);
+  const match = value.match(/^(\d+(?:\.\d+)?)s$/);
   const delay = match ? Math.max(60_000, Number(match[1]) * 1000) : DEFAULT_QUOTA_COOLDOWN_MS;
   return now + Math.min(delay, DEFAULT_QUOTA_COOLDOWN_MS);
 }
@@ -79,6 +79,12 @@ export async function generateGemini({ env, systemInstruction, contents, generat
       continue;
     }
 
+    if (response.status === 429) {
+      const payload = await response.clone().json().catch(() => ({}));
+      const retryAt = quotaCooldownUntil(payload);
+      await rememberQuotaExhaustion(env, payload);
+      return { response, model, attempts: attempt, quotaBlocked: true, retryAt };
+    }
     if (response.ok || !RETRYABLE_STATUSES.has(response.status) || attempt === MAX_ATTEMPTS) {
       return { response, model, attempts: attempt };
     }
