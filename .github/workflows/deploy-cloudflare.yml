@@ -1,4 +1,4 @@
-name: Deploy KING CODER to Cloudflare Workers
+name: Prepare KING CODER Cloudflare D1
 
 on:
   push:
@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 jobs:
-  deploy:
+  prepare-database:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -26,10 +26,10 @@ jobs:
             echo "ready=true" >> "$GITHUB_OUTPUT"
           else
             echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "Cloudflare deployment skipped. Add CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID in repository Actions secrets."
+            echo "Cloudflare D1 preparation skipped because repository Actions credentials are not configured."
           fi
 
-      - name: Create per-user usage table
+      - name: Create per-user usage tables
         if: steps.config.outputs.ready == 'true'
         uses: cloudflare/wrangler-action@v3
         with:
@@ -37,12 +37,3 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           wranglerVersion: "4.x"
           command: d1 execute king-coder-db --remote --command "CREATE TABLE IF NOT EXISTS user_usage (user_id TEXT NOT NULL, usage_date TEXT NOT NULL, chat_count INTEGER NOT NULL DEFAULT 0, build_count INTEGER NOT NULL DEFAULT 0, code_count INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (user_id, usage_date)); CREATE INDEX IF NOT EXISTS user_usage_date_idx ON user_usage(usage_date); CREATE TABLE IF NOT EXISTS user_activity (user_id TEXT PRIMARY KEY, last_seen INTEGER NOT NULL, last_feature TEXT NOT NULL); CREATE INDEX IF NOT EXISTS user_activity_last_seen_idx ON user_activity(last_seen);"
-
-      - name: Deploy Worker and static assets
-        if: steps.config.outputs.ready == 'true'
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          wranglerVersion: "4.x"
-          command: deploy
