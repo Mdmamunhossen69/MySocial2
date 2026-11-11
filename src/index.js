@@ -1,12 +1,12 @@
 const SYSTEM_INSTRUCTION = `আপনি KING CODER, একজন সহায়ক AI coding assistant। ব্যবহারকারীর ভাষায় উত্তর দিন; বাংলা হলে স্বাভাবিক, পরিষ্কার বাংলায় উত্তর দিন এবং সম্মানসূচক “আপনি” ব্যবহার করুন।
-আপনি ওয়েবসাইট পরিকল্পনা, UI/UX, frontend/backend কোড, debugging, testing ও deployment-এর নির্দেশনা দিতে পারেন। ব্যবহারকারীকে কখনো বলবেন না যে আপনি GitHub-এ কোড আপলোড, পরীক্ষা, বা deploy করেছেন যদি তা বাস্তবে কোনো tool দিয়ে করা না হয়ে থাকে। এই সংস্করণে আপনার কোনো GitHub, terminal বা deployment tool নেই; আপনি কেবল কথোপকথন ও কোডের পরামর্শ দিতে পারেন। গোপন API key চাইবেন না এবং ব্যবহারকারীকে chat-এ key paste করতে বলবেন না।`;
+আপনি ওয়েবসাইট পরিকল্পনা, UI/UX, frontend/backend কোড, debugging, testing ও deployment-এর নির্দেশনা দিতে পারেন। ব্যবহারকারীকে কখনো বলবেন না যে আপনি GitHub-এ কোড আপলোড, পরীক্ষা, বা deploy করেছেন যদি তা বাস্তবে কোনো tool দিয়ে করা না হয়ে থাকে। GitHub সংযোগ থাকলে অনুমোদিত repository API ব্যবহার করে কাজ করতে পারবেন। কোনো কাজ tool দিয়ে বাস্তবে সফল না হলে সফল হয়েছে বলবেন না। গোপন API key চাইবেন না এবং ব্যবহারকারীকে chat-এ key paste করতে বলবেন না।`;
 const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store"}});
 
 const ghEnc=new TextEncoder();
-const ghB64=bytes=>btoa(String.fromCharCode(...new Uint8Array(bytes))).replace(/\\+/g,"-").replace(/\\//g,"_").replace(/=+$/,"");
+const ghB64=bytes=>btoa(String.fromCharCode(...new Uint8Array(bytes))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
 const ghRandom=()=>ghB64(crypto.getRandomValues(new Uint8Array(32)));
 async function ghHash(s){return ghB64(await crypto.subtle.digest("SHA-256",ghEnc.encode(s)));}
-function ghCookie(req){const c=req.headers.get("Cookie")||"";const m=c.match(/(?:^|;\\s*)kc_session=([^;]+)/);return m?m[1]:"";}
+function ghCookie(req){const c=req.headers.get("Cookie")||"";const m=c.match(/(?:^|;\s*)kc_session=([^;]+)/);return m?m[1]:"";}
 function ghSetCookie(v,age){return `kc_session=${v}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${age}`;}
 async function ghKey(env){if(!env.TOKEN_ENCRYPTION_KEY)throw new Error("TOKEN_ENCRYPTION_KEY missing");const raw=Uint8Array.from(atob(env.TOKEN_ENCRYPTION_KEY),c=>c.charCodeAt(0));if(raw.length!==32)throw new Error("TOKEN_ENCRYPTION_KEY must decode to 32 bytes");return crypto.subtle.importKey("raw",raw,"AES-GCM",false,["encrypt","decrypt"]);}
 async function ghEncrypt(env,token){const iv=crypto.getRandomValues(new Uint8Array(12));const out=await crypto.subtle.encrypt({name:"AES-GCM",iv},await ghKey(env),ghEnc.encode(token));return ghB64(iv)+"."+ghB64(out);}
@@ -27,7 +27,7 @@ async function ghRoutes(req,env,url){
   const exchange=await fetch("https://github.com/login/oauth/access_token",{method:"POST",headers:{"Accept":"application/json","Content-Type":"application/json"},body:JSON.stringify({client_id:env.GITHUB_CLIENT_ID,client_secret:env.GITHUB_CLIENT_SECRET,code})});const auth=await exchange.json().catch(()=>({}));if(!exchange.ok||!auth.access_token)return reply({error:"GitHub token exchange ব্যর্থ হয়েছে।"},502);
   const ur=await ghApi("/user",auth.access_token),user=await ur.json().catch(()=>({}));if(!ur.ok||!user.id||!user.login)return reply({error:"GitHub account যাচাই করা যায়নি।"},502);
   const encrypted=await ghEncrypt(env,auth.access_token);await env.DB.prepare("INSERT INTO github_connections(user_id,username,encrypted_token,created_at) VALUES(?1,?2,?3,?4) ON CONFLICT(user_id) DO UPDATE SET username=excluded.username,encrypted_token=excluded.encrypted_token,created_at=excluded.created_at").bind(String(user.id),user.login,encrypted,Date.now()).run();
-  const session=ghRandom();await env.DB.prepare("INSERT INTO sessions(session_hash,user_id,expires_at) VALUES(?1,?2,?3)").bind(await ghHash(session),String(user.id),Date.now()+2592000000).run();return new Response(null,{status:302,headers:{"Location":url.origin+"/?github=connected","Set-Cookie":ghSetCookie(session,2592000)});
+  const session=ghRandom();await env.DB.prepare("INSERT INTO sessions(session_hash,user_id,expires_at) VALUES(?1,?2,?3)").bind(await ghHash(session),String(user.id),Date.now()+2592000000).run();return new Response(null,{status:302,headers:{"Location":url.origin+"/?github=connected","Set-Cookie":ghSetCookie(session,2592000)}});
  }
  if(url.pathname==="/api/github/status"&&req.method==="GET"){const s=await ghSession(req,env);return reply({configured:Boolean(env.DB&&env.GITHUB_CLIENT_ID),connected:Boolean(s),username:s?.username||null});}
  if(url.pathname==="/api/github/disconnect"&&req.method==="POST"){if(!env.DB)return reply({error:"D1 database binding নেই।"},503);const raw=ghCookie(req);if(raw)await env.DB.prepare("DELETE FROM sessions WHERE session_hash=?1").bind(await ghHash(raw)).run();return reply({ok:true},200,{"Set-Cookie":ghSetCookie("",0)});}
