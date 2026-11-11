@@ -1,3 +1,4 @@
+import { autonomousBuild } from "./autonomous.js";
 const SYSTEM_INSTRUCTION = `আপনি KING CODER, একজন সহায়ক AI coding assistant। ব্যবহারকারীর ভাষায় উত্তর দিন; বাংলা হলে স্বাভাবিক, পরিষ্কার বাংলায় উত্তর দিন এবং সম্মানসূচক “আপনি” ব্যবহার করুন।
 আপনি ওয়েবসাইট পরিকল্পনা, UI/UX, frontend/backend কোড, debugging, testing ও deployment-এর নির্দেশনা দিতে পারেন। ব্যবহারকারীকে কখনো বলবেন না যে আপনি GitHub-এ কোড আপলোড, পরীক্ষা, বা deploy করেছেন যদি তা বাস্তবে কোনো tool দিয়ে করা না হয়ে থাকে। GitHub সংযোগ থাকলে অনুমোদিত repository API ব্যবহার করে কাজ করতে পারবেন। কোনো কাজ tool দিয়ে বাস্তবে সফল না হলে সফল হয়েছে বলবেন না। গোপন API key চাইবেন না এবং ব্যবহারকারীকে chat-এ key paste করতে বলবেন না।`;
 const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store"}});
@@ -41,6 +42,11 @@ async function ghRoutes(req,env,url){
  if(url.pathname==="/api/github/disconnect"&&req.method==="POST"){const origin=req.headers.get("Origin");if(origin!==url.origin)return reply({error:"Cross-origin request blocked."},403);if(!env.DB)return reply({error:"D1 database binding নেই।"},503);const raw=ghCookie(req);if(raw)await env.DB.prepare("DELETE FROM sessions WHERE session_hash=?1").bind(await ghHash(raw)).run();return reply({ok:true},200,{"Set-Cookie":ghSetCookie("",0)});}
  if(url.pathname==="/api/github/repos"&&req.method==="GET"){
   const s=await ghSession(req,env);if(!s)return reply({error:"প্রথমে GitHub সংযোগ করুন।"},401);const token=await ghDecrypt(env,s.encrypted_token),r=await ghApi("/user/repos?per_page=50&sort=updated&affiliation=owner,collaborator,organization_member",token),data=await r.json().catch(()=>[]);if(!r.ok)return reply({error:"GitHub repository তালিকা আনা যায়নি।"},502);return reply({repositories:data.map(x=>({name:x.name,full_name:x.full_name,private:x.private,default_branch:x.default_branch,html_url:x.html_url}))});
+ }
+
+ if(url.pathname==="/api/build"&&req.method==="POST"){
+  const session=await ghSession(req,env);
+  return autonomousBuild({request:req,env,url,session,ghApi,ghDecrypt,geminiFailure});
  }
 
  if(url.pathname==="/api/code/generate"&&req.method==="POST"){
