@@ -18,5 +18,6 @@ jobs:
         run: |
           node --check src/index.js
           node --check src/autonomous.js
+          node --check src/ai.js
       - name: Check whitespace errors
         run: git diff --check
