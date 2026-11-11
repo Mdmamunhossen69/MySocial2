@@ -8,6 +8,7 @@ A Bengali-first AI website builder running on Cloudflare Workers, Gemini, GitHub
 - Select an owned repository or let KING CODER create a new private repository.
 - Describe a website or provide a public HTTPS reference URL.
 - Generate a complete project manifest and show a signed, read-only preview before any GitHub write.
+- Render generated HTML in an isolated sandboxed live preview; local CSS and JavaScript are embedded when possible, while network requests, external frames and form submissions are blocked.
 - After explicit approval, create a separate `king-coder/build-*` branch and a Pull Request; do not write directly to the default branch.
 - Cloudflare publishing is manual and approval-gated; no automatic live deployment is triggered by this workflow.
 - Pull-request review and manual code proposal flow remain available.
@@ -24,7 +25,7 @@ The generated project's manual deploy workflow can publish to Cloudflare Workers
 - `CLOUDFLARE_API_TOKEN`: a Cloudflare API token with permission to deploy Workers scripts.
 - `CLOUDFLARE_ACCOUNT_ID`: the target Cloudflare account ID.
 
-For this KING CODER Worker itself, `.github/workflows/deploy-worker.yml` is manually triggered only. It checks JavaScript syntax and existing Cloudflare secrets, then deploys only when you explicitly run the workflow. It never deploys on push or pull request. Do not paste tokens into chat or commit them to the repository.
+For this KING CODER Worker itself, `.github/workflows/deploy-worker.yml` runs after an approved change is merged into `main`, and also supports manual `workflow_dispatch`. It checks JavaScript syntax and verifies existing Cloudflare secrets before deploying; if credentials are missing, it exits without deployment. Pull requests run the quality checks first. Do not paste tokens into chat or commit them to the repository.
 
 ## Cloudflare Worker configuration
 - D1 binding: `DB`
@@ -66,6 +67,6 @@ GitHub OAuth callback:
 - No Claude paid API or automatic paid-provider fallback is configured.
 - Existing daily quotas are shown in the AI Team panel. The Worker cannot verify whether the Google Gemini API project has billing enabled; confirm billing status in Google Cloud/AI Studio before assuming API calls are free.
 - Task history is stored locally in the browser and is not a server-wide audit log.
-- Gemini's manager/inspector review is a single-pass static self-review; it is not a live browser visual test.
+- Gemini's manager/inspector review is a single-pass static self-review. The sandboxed preview provides a visual rendering, but it is not a full automated cross-browser or authenticated end-to-end test.
 - Google retired consumer free access to the old Gemini CLI on June 18, 2026; Antigravity CLI (`agy`) is the supported individual-account replacement. Its Free plan has weekly baseline quotas. Set AI-credit overages to Never/off where available. Neither CLI is connected to the Worker until a local agent bridge and user OAuth are completed.
 - Existing daily limits are 100 chats, 5 website previews and 20 code proposals per user. These limits are application controls, not proof of Google free-tier eligibility.
