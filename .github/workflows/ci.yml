@@ -27,3 +27,21 @@ jobs:
         run: node --experimental-default-type=module --test tests/*.test.mjs
       - name: Check whitespace errors
         run: git diff --check
+
+      - name: Smoke test production website and protected routes
+        env:
+          WORKER_URL: https://mysocial2.mdmamunhossenlimon7.workers.dev
+        run: |
+          set -euo pipefail
+          curl --retry 8 --retry-delay 2 --retry-all-errors -fsS "$WORKER_URL/" -o /tmp/king-coder-home.html
+          grep -q "KING CODER" /tmp/king-coder-home.html
+          curl --retry 8 --retry-delay 2 --retry-all-errors -fsS "$WORKER_URL/admin.html" -o /tmp/king-coder-admin.html
+          grep -q "KING CODER" /tmp/king-coder-admin.html
+          curl --retry 8 --retry-delay 2 --retry-all-errors -fsS "$WORKER_URL/api/health" -o /tmp/king-coder-health.json
+          node -e 'const h=require("/tmp/king-coder-health.json"); for (const k of ["ok","configured","geminiApiKeyConfigured","geminiBillingVerified","githubConfigured","databaseConfigured"]) if (h[k] !== true) throw new Error("Production health failed: "+k);'
+          curl --retry 8 --retry-delay 2 --retry-all-errors -fsS "$WORKER_URL/api/github/status" -o /tmp/king-coder-github.json
+          node -e 'const s=require("/tmp/king-coder-github.json"); if (s.configured !== true || s.connected !== false) throw new Error("GitHub OAuth status endpoint failed");'
+          code="$(curl -sS -o /tmp/king-coder-admin-guard.json -w '%{http_code}' "$WORKER_URL/api/admin/summary")"
+          test "$code" = "401"
+          code="$(curl -sS -o /tmp/king-coder-build-guard.json -w '%{http_code}' -X POST -H "Origin: $WORKER_URL" -H "Content-Type: application/json" --data '{"prompt":"smoke test"}' "$WORKER_URL/api/build")"
+          test "$code" = "401"
